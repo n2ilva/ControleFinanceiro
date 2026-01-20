@@ -2,45 +2,23 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
     View,
     Text,
-    StyleSheet,
     FlatList,
     TouchableOpacity,
     Alert,
     RefreshControl,
+    Modal,
+    Pressable,
+    TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import { FirestoreService } from '../services/firestoreService';
-import { Transaction } from '../types';
-import { theme } from '../theme';
+import { FirestoreService } from '../../services/firestoreService';
+import { Transaction } from '../../types';
+import { theme } from '../../theme';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-
-// Mapeamento de categorias para ícones
-const CATEGORY_ICONS: { [key: string]: string } = {
-    // Despesas
-    agua: 'water',
-    energia: 'flash',
-    internet: 'wifi',
-    alimentacao: 'restaurant',
-    transporte: 'car',
-    saude: 'medical',
-    educacao: 'school',
-    lazer: 'game-controller',
-    // Receitas
-    salario: 'cash',
-    deposito: 'card',
-    extra: 'gift',
-    // Padrão
-    outros: 'ellipsis-horizontal',
-};
-
-// Função para formatar valor com separador de milhar (padrão brasileiro)
-const formatCurrency = (value: number): string => {
-    return value.toLocaleString('pt-BR', {
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-};
+import { formatCurrency } from '../../utils';
+import { CATEGORY_ICONS } from '../../constants';
+import styles from './styles';
 
 export default function HomeScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
@@ -53,7 +31,10 @@ export default function HomeScreen({ navigation }: any) {
         totalIncome: 0,
         balance: 0,
     });
-    const [filter, setFilter] = useState<'all' | 'income' | 'expense'>('all');
+    const [filter, setFilter] = useState<'income' | 'expense' | 'unpaid'>('expense');
+    const [addMenuVisible, setAddMenuVisible] = useState(false);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [showSearch, setShowSearch] = useState(false);
 
     const loadTransactions = async () => {
         try {
@@ -133,7 +114,6 @@ export default function HomeScreen({ navigation }: any) {
     };
 
     const renderTransaction = ({ item }: { item: Transaction }) => {
-        const isExpense = item.type === 'expense';
         const categoryColor = theme.colors.categories[item.category as keyof typeof theme.colors.categories] || theme.colors.categories.outros;
         const categoryIcon = CATEGORY_ICONS[item.category] || CATEGORY_ICONS.outros;
 
@@ -184,6 +164,31 @@ export default function HomeScreen({ navigation }: any) {
                                         </Text>
                                     </View>
                                 )}
+                                {item.cardName && (
+                                    <View style={styles.cardBadge}>
+                                        <Ionicons name="card" size={12} color={theme.colors.textSecondary} />
+                                        <Text style={styles.cardText}>
+                                            {item.cardName}
+                                            {item.cardType ? ` • ${item.cardType === 'credit' ? 'Crédito' : 'Débito'}` : ''}
+                                        </Text>
+                                    </View>
+                                )}
+                                {item.isSalary && (
+                                    <View style={styles.salaryDateBadge}>
+                                        <Ionicons name="calendar-outline" size={12} color={theme.colors.textSecondary} />
+                                        <Text style={styles.salaryDateText}>
+                                            Recebimento: {new Date(item.date).toLocaleDateString('pt-BR')}
+                                        </Text>
+                                    </View>
+                                )}
+                                {item.type === 'income' && !item.isSalary && item.receivedDate && (
+                                    <View style={styles.salaryDateBadge}>
+                                        <Ionicons name="calendar-outline" size={12} color={theme.colors.success} />
+                                        <Text style={[styles.salaryDateText, { color: theme.colors.success }]}>
+                                            Recebido: {new Date(item.receivedDate).toLocaleDateString('pt-BR')}
+                                        </Text>
+                                    </View>
+                                )}
                             </View>
                         </View>
 
@@ -194,7 +199,7 @@ export default function HomeScreen({ navigation }: any) {
                                         R$ {formatCurrency(item.originalAmount)}
                                     </Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                                        {item.amount > item.originalAmount && (
+                                        {!item.isSalary && item.amount > item.originalAmount && (
                                             <Text style={{
                                                 color: theme.colors.success,
                                                 fontWeight: 'bold',
@@ -205,7 +210,11 @@ export default function HomeScreen({ navigation }: any) {
                                             style={[
                                                 styles.transactionAmount,
                                                 {
-                                                    color: item.amount < item.originalAmount ? theme.colors.danger : theme.colors.success,
+                                                    color: item.isSalary
+                                                        ? theme.colors.danger
+                                                        : item.amount < item.originalAmount
+                                                            ? theme.colors.danger
+                                                            : theme.colors.success,
                                                     fontWeight: 'bold'
                                                 }
                                             ]}
@@ -226,9 +235,10 @@ export default function HomeScreen({ navigation }: any) {
                                 </Text>
                             )}
 
+                            {/* Mostra badge "Pago" se está marcado como pago */}
                             {item.isPaid && (
                                 <View style={styles.paidBadge}>
-                                    <Ionicons name="checkmark-circle" size={10} color={theme.colors.success} />
+                                    <Ionicons name="checkmark-circle" size={10} color={theme.colors.white} />
                                     <Text style={styles.paidBadgeText}>Pago</Text>
                                 </View>
                             )}
@@ -268,8 +278,23 @@ export default function HomeScreen({ navigation }: any) {
 
     const filteredTransactions = transactions
         .filter(t => {
-            if (filter === 'all') return true;
-            return t.type === filter;
+            // Filtro por tipo
+            if (filter === 'unpaid') {
+                return t.type === 'expense' && !t.isPaid;
+            }
+            if (t.type !== filter) return false;
+            
+            // Filtro por busca
+            if (searchQuery.trim()) {
+                const query = searchQuery.toLowerCase().trim();
+                const matchDescription = t.description.toLowerCase().includes(query);
+                const matchCategory = t.category.toLowerCase().includes(query);
+                const matchCard = t.cardName?.toLowerCase().includes(query);
+                const matchAmount = formatCurrency(t.amount).includes(query);
+                return matchDescription || matchCategory || matchCard || matchAmount;
+            }
+            
+            return true;
         })
         .sort((a, b) => {
             const dateA = new Date(a.dueDate || a.date).getTime();
@@ -277,9 +302,12 @@ export default function HomeScreen({ navigation }: any) {
             return dateA - dateB;
         });
 
+    // Contar despesas não pagas
+    const unpaidCount = transactions.filter(t => t.type === 'expense' && !t.isPaid).length;
+    const unpaidTotal = transactions.filter(t => t.type === 'expense' && !t.isPaid).reduce((sum, t) => sum + t.amount, 0);
+
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* Header com saldo */}
             <View style={styles.header}>
                 <View style={styles.balanceCard}>
                     <Text style={styles.balanceLabel}>Saldo do Mês</Text>
@@ -307,7 +335,6 @@ export default function HomeScreen({ navigation }: any) {
                 </View>
             </View>
 
-            {/* Seletor de mês */}
             <View style={styles.monthSelector}>
                 <TouchableOpacity onPress={() => changeMonth('prev')} style={styles.monthButton}>
                     <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
@@ -317,18 +344,65 @@ export default function HomeScreen({ navigation }: any) {
                     {monthName.charAt(0).toUpperCase() + monthName.slice(1)} {currentYear}
                 </Text>
 
-                <TouchableOpacity onPress={() => changeMonth('next')} style={styles.monthButton}>
-                    <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
+                <View style={styles.monthActions}>
+                    <TouchableOpacity 
+                        onPress={() => setShowSearch(!showSearch)} 
+                        style={styles.searchToggleButton}
+                    >
+                        <Ionicons 
+                            name={showSearch ? "close" : "search"} 
+                            size={20} 
+                            color={showSearch ? theme.colors.danger : theme.colors.primary} 
+                        />
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => changeMonth('next')} style={styles.monthButton}>
+                        <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
+                    </TouchableOpacity>
+                </View>
             </View>
 
-            {/* Filtros */}
+            {showSearch && (
+                <View style={styles.searchContainer}>
+                    <View style={styles.searchInputContainer}>
+                        <Ionicons name="search" size={18} color={theme.colors.textMuted} />
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Buscar por descrição, categoria, cartão..."
+                            placeholderTextColor={theme.colors.textMuted}
+                            value={searchQuery}
+                            onChangeText={setSearchQuery}
+                            autoFocus
+                        />
+                        {searchQuery.length > 0 && (
+                            <TouchableOpacity onPress={() => setSearchQuery('')}>
+                                <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
+                            </TouchableOpacity>
+                        )}
+                    </View>
+                    {searchQuery.trim() && (
+                        <Text style={styles.searchResultCount}>
+                            {filteredTransactions.length} resultado(s) encontrado(s)
+                        </Text>
+                    )}
+                </View>
+            )}
+
             <View style={styles.filterContainer}>
                 <TouchableOpacity
-                    style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
-                    onPress={() => setFilter('all')}
+                    style={[styles.filterButton, filter === 'expense' && styles.filterButtonActive]}
+                    onPress={() => setFilter('expense')}
                 >
-                    <Text style={[styles.filterText, filter === 'all' && styles.filterTextActive]}>Todos</Text>
+                    <Ionicons name="arrow-up-circle" size={16} color={filter === 'expense' ? theme.colors.white : theme.colors.danger} />
+                    <Text style={[styles.filterText, filter === 'expense' && styles.filterTextActive]}>Despesas</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                    style={[styles.filterButton, filter === 'unpaid' && styles.filterButtonActive, unpaidCount > 0 && styles.filterButtonWarning]}
+                    onPress={() => setFilter('unpaid')}
+                >
+                    <Ionicons name="alert-circle" size={16} color={filter === 'unpaid' ? theme.colors.white : theme.colors.warning} />
+                    <Text style={[styles.filterText, filter === 'unpaid' && styles.filterTextActive]}>
+                        Não Pagas {unpaidCount > 0 && `(${unpaidCount})`}
+                    </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                     style={[styles.filterButton, filter === 'income' && styles.filterButtonActive]}
@@ -337,16 +411,8 @@ export default function HomeScreen({ navigation }: any) {
                     <Ionicons name="arrow-down-circle" size={16} color={filter === 'income' ? theme.colors.white : theme.colors.success} />
                     <Text style={[styles.filterText, filter === 'income' && styles.filterTextActive]}>Receitas</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'expense' && styles.filterButtonActive]}
-                    onPress={() => setFilter('expense')}
-                >
-                    <Ionicons name="arrow-up-circle" size={16} color={filter === 'expense' ? theme.colors.white : theme.colors.danger} />
-                    <Text style={[styles.filterText, filter === 'expense' && styles.filterTextActive]}>Despesas</Text>
-                </TouchableOpacity>
             </View>
 
-            {/* Lista de transações */}
             <FlatList
                 data={filteredTransactions}
                 renderItem={renderTransaction}
@@ -364,318 +430,69 @@ export default function HomeScreen({ navigation }: any) {
                 }
             />
 
-            {/* Botão flutuante para adicionar */}
             <TouchableOpacity
-                style={[styles.fab, { bottom: 70 + insets.bottom }]}
-                onPress={() => navigation.navigate('AddTransaction')}
+                style={[styles.fab, { bottom: insets.bottom }]}
+                onPress={() => setAddMenuVisible(true)}
             >
                 <Ionicons name="add" size={32} color={theme.colors.white} />
             </TouchableOpacity>
+
+            <Modal
+                visible={addMenuVisible}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setAddMenuVisible(false)}
+            >
+                <Pressable style={styles.menuOverlay} onPress={() => setAddMenuVisible(false)}>
+                    <View style={[styles.menuContainer, { paddingBottom: 20 + insets.bottom }]}>
+                        <Text style={styles.menuTitle}>Adicionar</Text>
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                setAddMenuVisible(false);
+                                navigation.navigate('AddExpense');
+                            }}
+                        >
+                            <Ionicons name="arrow-up-circle" size={20} color={theme.colors.danger} />
+                            <Text style={styles.menuItemText}>Despesas</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                setAddMenuVisible(false);
+                                navigation.navigate('AddIncome');
+                            }}
+                        >
+                            <Ionicons name="arrow-down-circle" size={20} color={theme.colors.success} />
+                            <Text style={styles.menuItemText}>Receitas</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                setAddMenuVisible(false);
+                                navigation.navigate('AddSalary');
+                            }}
+                        >
+                            <Ionicons name="cash" size={20} color={theme.colors.primary} />
+                            <Text style={styles.menuItemText}>Salário</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                            style={styles.menuItem}
+                            onPress={() => {
+                                setAddMenuVisible(false);
+                                navigation.navigate('MainTabs', { screen: 'CreditCards' });
+                            }}
+                        >
+                            <Ionicons name="card" size={20} color={theme.colors.primary} />
+                            <Text style={styles.menuItemText}>Cartões</Text>
+                        </TouchableOpacity>
+                    </View>
+                </Pressable>
+            </Modal>
         </View>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: theme.colors.background,
-    },
-    header: {
-        padding: theme.spacing.md,
-        // paddingTop removed as it is handled by inline style with insets
-    },
-    balanceCard: {
-        backgroundColor: theme.colors.backgroundCard,
-        borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.lg,
-        ...theme.shadows.md,
-    },
-    balanceLabel: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.textSecondary,
-        marginBottom: theme.spacing.xs,
-    },
-    balanceAmount: {
-        fontSize: theme.fontSize.xxxl,
-        fontWeight: theme.fontWeight.bold,
-        marginBottom: theme.spacing.md,
-    },
-    positiveBalance: {
-        color: theme.colors.success,
-    },
-    negativeBalance: {
-        color: theme.colors.danger,
-    },
-    balanceDetails: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: theme.spacing.md,
-        paddingTop: theme.spacing.md,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-    },
-    balanceItem: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.sm,
-    },
-    balanceItemText: {
-        gap: 2,
-    },
-    balanceItemLabel: {
-        fontSize: theme.fontSize.xs,
-        color: theme.colors.textSecondary,
-    },
-    balanceItemValue: {
-        fontSize: theme.fontSize.md,
-        color: theme.colors.text,
-        fontWeight: theme.fontWeight.semibold,
-    },
-    monthSelector: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.md,
-    },
-    monthButton: {
-        padding: theme.spacing.sm,
-    },
-    monthText: {
-        fontSize: theme.fontSize.lg,
-        fontWeight: theme.fontWeight.semibold,
-        color: theme.colors.text,
-    },
-    listContent: {
-        padding: theme.spacing.md,
-        // paddingBottom handled via inline
-    },
-    transactionCard: {
-        backgroundColor: theme.colors.backgroundCard,
-        borderRadius: theme.borderRadius.md,
-        marginBottom: theme.spacing.md,
-        overflow: 'hidden',
-        ...theme.shadows.sm,
-        flexDirection: 'row',
-    },
-    categoryIndicator: {
-        width: 4,
-    },
-    transactionContent: {
-        flex: 1,
-        padding: theme.spacing.md,
-    },
-    transactionHeader: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'flex-start',
-        marginBottom: theme.spacing.sm,
-    },
-    transactionInfo: {
-        flex: 1,
-        marginRight: theme.spacing.sm,
-    },
-    transactionDescription: {
-        fontSize: theme.fontSize.md,
-        fontWeight: theme.fontWeight.semibold,
-        color: theme.colors.text,
-        marginBottom: theme.spacing.xs,
-    },
-    transactionMeta: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.sm,
-        marginTop: 6,
-    },
-    categoryBadge: {
-        backgroundColor: theme.colors.surface,
-        padding: 6,
-        borderRadius: theme.borderRadius.sm,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    transactionCategory: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.textSecondary,
-        textTransform: 'capitalize',
-    },
-    recurringBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: theme.spacing.sm,
-        paddingVertical: 2,
-        borderRadius: theme.borderRadius.sm,
-    },
-    recurringText: {
-        fontSize: theme.fontSize.xs,
-        color: theme.colors.primary,
-        fontWeight: theme.fontWeight.medium,
-    },
-    dueDateBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        backgroundColor: theme.colors.surface,
-        paddingHorizontal: theme.spacing.sm,
-        paddingVertical: 2,
-        borderRadius: theme.borderRadius.sm,
-    },
-    dueDateOverdue: {
-        backgroundColor: `${theme.colors.danger}20`,
-    },
-    dueDateText: {
-        fontSize: theme.fontSize.xs,
-        color: theme.colors.warning,
-        fontWeight: theme.fontWeight.medium,
-    },
-    dueDateOverdueText: {
-        color: theme.colors.danger,
-    },
-    transactionAmount: {
-        fontSize: theme.fontSize.xl,
-        fontWeight: theme.fontWeight.bold,
-    },
-    expenseAmount: {
-        color: theme.colors.danger,
-    },
-    incomeAmount: {
-        color: theme.colors.success,
-    },
-    transactionActions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'flex-start', // Mudado para start para agrupar melhor
-        gap: theme.spacing.sm, // Gap entre botões
-        marginTop: theme.spacing.sm,
-        paddingTop: theme.spacing.sm,
-        borderTopWidth: 1,
-        borderTopColor: theme.colors.border,
-    },
-    editButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: theme.colors.surface,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: theme.borderRadius.sm,
-        gap: 6,
-    },
-    editButtonText: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.text,
-        fontWeight: 'medium',
-    },
-    paidButton: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: theme.spacing.xs,
-        paddingVertical: 6,
-        paddingHorizontal: 12,
-        borderRadius: theme.borderRadius.sm,
-        backgroundColor: theme.colors.surface,
-    },
-    paidButtonActive: {
-        backgroundColor: theme.colors.surface,
-    },
-    paidButtonText: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.textSecondary,
-    },
-    paidButtonTextActive: {
-        color: theme.colors.success,
-        fontWeight: theme.fontWeight.medium,
-    },
-    deleteButton: {
-        padding: 8,
-        marginLeft: 'auto',
-    },
-    emptyState: {
-        alignItems: 'center',
-        justifyContent: 'center',
-        paddingVertical: theme.spacing.xxl,
-    },
-    emptyStateText: {
-        fontSize: theme.fontSize.lg,
-        fontWeight: theme.fontWeight.semibold,
-        color: theme.colors.textSecondary,
-        marginTop: theme.spacing.md,
-    },
-    emptyStateSubtext: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.textMuted,
-        textAlign: 'center',
-    },
-    amountAndPaidBadge: {
-        alignItems: 'flex-end',
-        gap: 4,
-    },
-    paidBadge: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 2,
-        backgroundColor: theme.colors.successLight,
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 12,
-    },
-    paidBadgeText: {
-        fontSize: 10,
-        color: theme.colors.success,
-        fontWeight: 'bold',
-    },
-    actionButton: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: theme.colors.background,
-        alignItems: 'center',
-        justifyContent: 'center',
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-    },
-    filterContainer: {
-        flexDirection: 'row',
-        paddingHorizontal: theme.spacing.md,
-        paddingBottom: theme.spacing.md,
-        gap: theme.spacing.sm,
-    },
-    filterButton: {
-        flex: 1,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
-        gap: 6,
-        paddingVertical: 8,
-        borderRadius: 20,
-        backgroundColor: theme.colors.backgroundCard,
-        borderWidth: 1,
-        borderColor: theme.colors.border,
-    },
-    filterButtonActive: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
-    },
-    filterText: {
-        fontSize: theme.fontSize.sm,
-        color: theme.colors.textSecondary,
-        fontWeight: theme.fontWeight.medium,
-    },
-    filterTextActive: {
-        color: theme.colors.white,
-        fontWeight: theme.fontWeight.bold,
-    },
-    fab: {
-        position: 'absolute',
-        right: theme.spacing.md,
-        // bottom removed as it is handled via inline style
-        width: 64,
-        height: 64,
-        borderRadius: theme.borderRadius.full,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...theme.shadows.lg,
-    },
-});

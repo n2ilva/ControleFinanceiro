@@ -79,7 +79,11 @@ export const SalaryFirestoreService = {
         salaries.push({
           id: doc.id,
           description: data.description,
+          ...(data.company && { company: data.company }),
           amount: data.amount,
+          ...(data.salaryType && { salaryType: data.salaryType }),
+          ...(data.originalAmount !== undefined && { originalAmount: data.originalAmount }),
+          ...(data.paymentDate && { paymentDate: data.paymentDate }),
           isActive: data.isActive,
           createdAt: data.createdAt.toDate().toISOString(),
         });

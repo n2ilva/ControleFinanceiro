@@ -10,6 +10,10 @@ export interface Transaction {
   createdAt: string;
   isSalary?: boolean;
   dueDate?: string;
+  receivedDate?: string; // Data de recebimento para receitas
+  cardId?: string | null;
+  cardName?: string | null;
+  cardType?: 'debit' | 'credit' | null;
   userId: string; // Quem criou
   groupId?: string; // Grupo compartilhado
   recurrenceId?: string; // ID compartilhado entre transações recorrentes geradas juntas
@@ -35,8 +39,22 @@ export interface CategoryData {
 export interface Salary {
   id: string;
   description: string;
+  company?: string;
   amount: number;
+  salaryType?: 'salary' | 'thirteenth' | 'vacation' | 'bonus';
+  originalAmount?: number;
+  paymentDate?: string; // ISO
   isActive: boolean;
+  createdAt: string;
+  userId: string;
+  groupId?: string;
+}
+
+export interface CreditCard {
+  id: string;
+  name: string;
+  dueDay: number;
+  cardType: 'debit' | 'credit';
   createdAt: string;
   userId: string;
   groupId?: string;

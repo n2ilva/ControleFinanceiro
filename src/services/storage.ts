@@ -99,7 +99,7 @@ export const StorageService = {
 
       const newTransactions = recurringTransactions.map(t => ({
         ...t,
-        id: `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
         date: new Date(toYear, toMonth, new Date(t.date).getDate()).toISOString(),
         isPaid: false,
         createdAt: new Date().toISOString(),

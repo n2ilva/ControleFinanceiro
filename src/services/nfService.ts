@@ -1,7 +1,8 @@
 export interface NFData {
     amount?: number;
     date?: string; // ISO ou formatada
-    items?: Array<{ description: string; amount: number }>;
+    items?: Array<{ description: string; amount?: number }>;
+    productName?: string;
     url: string;
     store?: string;
 }
@@ -71,13 +72,30 @@ export const NfService = {
                 }
             }
 
-            console.log('Scraping Resultado:', { amount, store, date });
+            // 4. Nome do Produto (primeiro item)
+            let productName: string | undefined;
+            const productRegexes = [
+                /class="txtTit"[^>]*>([^<]+)</i, // Padrão comum NFC-e
+                /class="item-desc"[^>]*>([^<]+)</i,
+                /Produto\s*:\s*<[^>]*>([^<]+)</i,
+            ];
+
+            for (const regex of productRegexes) {
+                const match = html.match(regex);
+                if (match && match[1]) {
+                    productName = match[1].trim();
+                    break;
+                }
+            }
+
+            console.log('Scraping Resultado:', { amount, store, date, productName });
 
             return {
                 url,
                 amount,
                 store,
-                date
+                date,
+                productName
             };
 
         } catch (error) {

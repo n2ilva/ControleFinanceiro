@@ -14,6 +14,9 @@ import EditTransactionScreen from '../screens/EditTransactionScreen';
 import ChartsScreen from '../screens/ChartsScreen';
 import QRScannerScreen from '../screens/QRScannerScreen';
 import GroupScreen from '../screens/GroupScreen';
+import CreditCardsScreen from '../screens/CreditCardsScreen';
+import SalariesScreen from '../screens/SalariesScreen';
+import AddSalaryScreen from '../screens/AddSalaryScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 
@@ -25,7 +28,7 @@ function HomeTabs() {
 
     return (
         <Tab.Navigator
-            screenOptions={{
+            screenOptions={({ navigation }) => ({
                 tabBarStyle: {
                     backgroundColor: theme.colors.backgroundCard,
                     borderTopColor: theme.colors.border,
@@ -48,7 +51,16 @@ function HomeTabs() {
                     fontWeight: theme.fontWeight.bold,
                     fontSize: theme.fontSize.xl,
                 },
-            }}
+                headerRight: () => (
+                    <Ionicons
+                        name="people"
+                        size={22}
+                        color={theme.colors.text}
+                        style={{ marginRight: theme.spacing.md }}
+                        onPress={() => navigation.navigate('Group')}
+                    />
+                ),
+            })}
         >
             <Tab.Screen
                 name="Home"
@@ -62,6 +74,17 @@ function HomeTabs() {
                 }}
             />
             <Tab.Screen
+                name="CreditCards"
+                component={CreditCardsScreen}
+                options={{
+                    title: 'Cartões',
+                    tabBarLabel: 'Cartões',
+                    tabBarIcon: ({ color, size }) => (
+                        <Ionicons name="card" size={size} color={color} />
+                    ),
+                }}
+            />
+            <Tab.Screen
                 name="Charts"
                 component={ChartsScreen}
                 options={{
@@ -69,17 +92,6 @@ function HomeTabs() {
                     tabBarLabel: 'Análises',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="stats-chart" size={size} color={color} />
-                    ),
-                }}
-            />
-            <Tab.Screen
-                name="Group"
-                component={GroupScreen}
-                options={{
-                    title: 'Grupo',
-                    tabBarLabel: 'Grupo',
-                    tabBarIcon: ({ color, size }) => (
-                        <Ionicons name="people" size={size} color={color} />
                     ),
                 }}
             />
@@ -127,10 +139,20 @@ function AppStack() {
                 options={{ headerShown: false }}
             />
             <Stack.Screen
-                name="AddTransaction"
+                name="AddExpense"
                 component={AddTransactionScreen}
+                initialParams={{ initialType: 'expense', lockType: true }}
                 options={{
-                    title: 'Nova Transação',
+                    title: 'Nova Despesa',
+                    presentation: 'modal',
+                }}
+            />
+            <Stack.Screen
+                name="AddIncome"
+                component={AddTransactionScreen}
+                initialParams={{ initialType: 'income', lockType: true }}
+                options={{
+                    title: 'Nova Receita',
                     presentation: 'modal',
                 }}
             />
@@ -139,6 +161,29 @@ function AppStack() {
                 component={EditTransactionScreen}
                 options={{
                     title: 'Editar Transação',
+                    presentation: 'modal',
+                }}
+            />
+            <Stack.Screen
+                name="Group"
+                component={GroupScreen}
+                options={{
+                    title: 'Grupo',
+                }}
+            />
+            <Stack.Screen
+                name="AddSalary"
+                component={AddSalaryScreen}
+                options={{
+                    title: 'Novo Salário',
+                    presentation: 'modal',
+                }}
+            />
+            <Stack.Screen
+                name="Salaries"
+                component={SalariesScreen}
+                options={{
+                    title: 'Salários',
                     presentation: 'modal',
                 }}
             />

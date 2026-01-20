@@ -15,6 +15,7 @@ import { db } from "../config/firebase";
 import { Transaction, MonthlyData } from "../types";
 import { AuthService } from "./authService";
 import { GroupService } from "./groupService";
+import { SalaryFirestoreService } from "./salaryFirestoreService";
 
 export const FirestoreService = {
   // Obter referência da coleção de transações
@@ -54,7 +55,7 @@ export const FirestoreService = {
       const batch = writeBatch(db);
 
       // Gerar ID de recorrência para agrupar todas
-      const recurrenceId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const recurrenceId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const originalAmount = transaction.amount;
       const baseDate = new Date(transaction.date);
 
@@ -183,6 +184,9 @@ export const FirestoreService = {
           createdAt: data.createdAt.toDate().toISOString(),
           ...(data.isSalary && { isSalary: data.isSalary }),
           ...(data.dueDate && { dueDate: data.dueDate.toDate().toISOString() }),
+          ...(data.cardId !== undefined && { cardId: data.cardId }),
+          ...(data.cardName !== undefined && { cardName: data.cardName }),
+          ...(data.cardType !== undefined && { cardType: data.cardType }),
           ...(data.recurrenceId && { recurrenceId: data.recurrenceId }),
           ...(data.originalAmount && { originalAmount: data.originalAmount }),
         });
@@ -200,7 +204,44 @@ export const FirestoreService = {
     try {
       const transactions = await this.getTransactions();
 
-      const monthTransactions = transactions.filter((t) => {
+      const activeSalaries = await SalaryFirestoreService.getActiveSalaries();
+      const salaryTransactions: Transaction[] = activeSalaries.map((salary) => {
+        let day = 1;
+        if (salary.paymentDate) {
+          const match = salary.paymentDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+          if (match) {
+            day = parseInt(match[1]);
+          } else {
+            const parsed = new Date(salary.paymentDate);
+            if (!isNaN(parsed.getTime())) {
+              day = parsed.getDate();
+            }
+          }
+        }
+
+        const dateObj = new Date(year, month, day);
+        // Ajuste para o último dia do mês se necessário
+        if (dateObj.getMonth() !== month) {
+          dateObj.setDate(0);
+        }
+
+        return {
+          id: `salary_${salary.id}_${year}_${month}`,
+          description: salary.company || salary.description,
+          amount: salary.amount,
+          originalAmount: salary.originalAmount,
+          category: salary.salaryType === 'salary' ? 'salario' : 'extra',
+          isRecurring: true,
+          isPaid: true,
+          type: 'income',
+          date: dateObj.toISOString(),
+          createdAt: salary.createdAt,
+          isSalary: true,
+          userId: salary.userId,
+        };
+      });
+
+      const monthTransactions = [...transactions, ...salaryTransactions].filter((t) => {
         const date = new Date(t.date);
         return date.getMonth() === month && date.getFullYear() === year;
       });
