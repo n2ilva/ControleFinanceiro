@@ -250,28 +250,38 @@ export default function GroupScreen({ navigation }: any) {
                 onPress={() => handleSwitchGroup(item)}
                 activeOpacity={0.7}
             >
-                <View style={styles.groupCardHeader}>
-                    <View style={styles.groupCardInfo}>
-                        <View style={styles.groupCardTitleRow}>
+                <View style={styles.groupCardContent}>
+                    <View style={styles.groupCardHeader}>
+                        <View style={[styles.groupIconContainer, isActive && styles.groupIconContainerActive]}>
                             <Ionicons
                                 name="people"
                                 size={24}
                                 color={isActive ? theme.colors.primary : theme.colors.textSecondary}
                             />
-                            <Text style={[styles.groupCardName, isActive && styles.groupCardNameActive]}>
-                                {item.name}
-                            </Text>
-                            {isActive && (
-                                <View style={styles.activeBadge}>
-                                    <Text style={styles.activeBadgeText}>ATIVO</Text>
-                                </View>
-                            )}
                         </View>
-                        <View style={styles.groupCardMeta}>
-                            <Text style={styles.groupCardCode}>Código: {item.code}</Text>
-                            <Text style={styles.groupCardMembers}>
-                                {item.members.length} membro(s)
-                            </Text>
+                        <View style={styles.groupCardInfo}>
+                            <View style={styles.groupCardTitleRow}>
+                                <Text style={[styles.groupCardName, isActive && styles.groupCardNameActive]} numberOfLines={1}>
+                                    {item.name}
+                                </Text>
+                                {isActive && (
+                                    <View style={styles.activeBadge}>
+                                        <Text style={styles.activeBadgeText}>Ativo</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <View style={styles.groupCardMeta}>
+                                <View style={styles.groupCardMetaItem}>
+                                    <Ionicons name="key-outline" size={14} color={theme.colors.textMuted} />
+                                    <Text style={styles.groupCardCode}>{item.code}</Text>
+                                </View>
+                                <View style={styles.groupCardMetaItem}>
+                                    <Ionicons name="person-outline" size={14} color={theme.colors.textMuted} />
+                                    <Text style={styles.groupCardMembers}>
+                                        {item.members.length} {item.members.length === 1 ? 'membro' : 'membros'}
+                                    </Text>
+                                </View>
+                            </View>
                         </View>
                     </View>
                 </View>
@@ -281,19 +291,22 @@ export default function GroupScreen({ navigation }: any) {
                         style={styles.groupCardAction}
                         onPress={() => handleOpenMembersModal(item)}
                     >
-                        <Ionicons name="settings-outline" size={20} color={theme.colors.primary} />
+                        <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
+                        <Text style={styles.groupCardActionText}>Gerenciar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                         style={styles.groupCardAction}
                         onPress={() => handleShareCode(item)}
                     >
-                        <Ionicons name="share-outline" size={20} color={theme.colors.primary} />
+                        <Ionicons name="share-outline" size={18} color={theme.colors.textSecondary} />
+                        <Text style={styles.groupCardActionText}>Compartilhar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        style={styles.groupCardAction}
+                        style={[styles.groupCardAction, styles.groupCardActionLast]}
                         onPress={() => handleLeaveGroup(item)}
                     >
-                        <Ionicons name="exit-outline" size={20} color={theme.colors.danger} />
+                        <Ionicons name="exit-outline" size={18} color={theme.colors.danger} />
+                        <Text style={[styles.groupCardActionText, styles.groupCardActionTextDanger]}>Sair</Text>
                     </TouchableOpacity>
                 </View>
             </TouchableOpacity>
@@ -311,13 +324,35 @@ export default function GroupScreen({ navigation }: any) {
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: 80 + insets.bottom }]}>
+                {/* Header do Usuário */}
+                <View style={styles.userHeader}>
+                    <View style={styles.userHeaderContent}>
+                        <View style={styles.userAvatar}>
+                            <Ionicons name="person" size={28} color={theme.colors.white} />
+                        </View>
+                        <View style={styles.userInfo}>
+                            <Text style={styles.userName} numberOfLines={1}>
+                                {user?.displayName || 'Usuário'}
+                            </Text>
+                            <Text style={styles.userEmail} numberOfLines={1}>
+                                {user?.email}
+                            </Text>
+                        </View>
+                        <TouchableOpacity style={styles.logoutIconButton} onPress={handleLogout}>
+                            <Ionicons name="log-out-outline" size={22} color={theme.colors.white} />
+                        </TouchableOpacity>
+                    </View>
+                </View>
+
                 {groups.length > 0 ? (
                     <>
                         {/* Grupos do Usuário */}
                         <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Meus Grupos</Text>
+                            <View style={styles.sectionHeader}>
+                                <Text style={styles.sectionTitle}>Meus Grupos</Text>
+                            </View>
                             <Text style={styles.sectionHint}>
-                                Toque em um grupo para alternar
+                                Toque em um grupo para ativá-lo
                             </Text>
                             <FlatList
                                 data={groups}
@@ -330,15 +365,18 @@ export default function GroupScreen({ navigation }: any) {
 
                         {/* Adicionar Novo Grupo */}
                         <View style={styles.addGroupSection}>
-                            <Text style={styles.sectionTitle}>Adicionar Outro Grupo</Text>
+                            <Text style={styles.addGroupSectionTitle}>Adicionar Grupo</Text>
 
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Nome do novo grupo"
-                                placeholderTextColor={theme.colors.textMuted}
-                                value={groupName}
-                                onChangeText={setGroupName}
-                            />
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Criar novo grupo</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Nome do grupo"
+                                    placeholderTextColor={theme.colors.textMuted}
+                                    value={groupName}
+                                    onChangeText={setGroupName}
+                                />
+                            </View>
                             <TouchableOpacity
                                 style={[styles.button, styles.createButton, creating && styles.buttonDisabled]}
                                 onPress={handleCreateGroup}
@@ -356,19 +394,22 @@ export default function GroupScreen({ navigation }: any) {
 
                             <View style={styles.divider}>
                                 <View style={styles.dividerLine} />
-                                <Text style={styles.dividerText}>OU</Text>
+                                <Text style={styles.dividerText}>ou</Text>
                                 <View style={styles.dividerLine} />
                             </View>
 
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Código do grupo (6 caracteres)"
-                                placeholderTextColor={theme.colors.textMuted}
-                                value={joinCode}
-                                onChangeText={setJoinCode}
-                                autoCapitalize="characters"
-                                maxLength={6}
-                            />
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Entrar em grupo existente</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Código do grupo"
+                                    placeholderTextColor={theme.colors.textMuted}
+                                    value={joinCode}
+                                    onChangeText={setJoinCode}
+                                    autoCapitalize="characters"
+                                    maxLength={6}
+                                />
+                            </View>
                             <TouchableOpacity
                                 style={[styles.button, styles.joinButton, creating && styles.buttonDisabled]}
                                 onPress={handleJoinGroup}
@@ -390,22 +431,25 @@ export default function GroupScreen({ navigation }: any) {
                     <View>
                         <View style={styles.welcomeCard}>
                             <Ionicons name="people-outline" size={64} color={theme.colors.primary} />
-                            <Text style={styles.welcomeTitle}>Compartilhamento de Dados</Text>
+                            <Text style={styles.welcomeTitle}>Compartilhamento</Text>
                             <Text style={styles.welcomeText}>
                                 Crie um grupo ou entre em um existente para compartilhar suas finanças com outras pessoas.
                             </Text>
                         </View>
 
                         {/* Criar Grupo */}
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Criar Novo Grupo</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Nome do grupo (ex: Família Silva)"
-                                placeholderTextColor={theme.colors.textMuted}
-                                value={groupName}
-                                onChangeText={setGroupName}
-                            />
+                        <View style={styles.addGroupSection}>
+                            <Text style={styles.addGroupSectionTitle}>Criar Novo Grupo</Text>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Nome do grupo</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: Família Silva"
+                                    placeholderTextColor={theme.colors.textMuted}
+                                    value={groupName}
+                                    onChangeText={setGroupName}
+                                />
+                            </View>
                             <TouchableOpacity
                                 style={[styles.button, styles.createButton, creating && styles.buttonDisabled]}
                                 onPress={handleCreateGroup}
@@ -420,27 +464,27 @@ export default function GroupScreen({ navigation }: any) {
                                     </>
                                 )}
                             </TouchableOpacity>
-                        </View>
 
-                        {/* Divisor */}
-                        <View style={styles.divider}>
-                            <View style={styles.dividerLine} />
-                            <Text style={styles.dividerText}>OU</Text>
-                            <View style={styles.dividerLine} />
-                        </View>
+                            {/* Divisor */}
+                            <View style={styles.divider}>
+                                <View style={styles.dividerLine} />
+                                <Text style={styles.dividerText}>ou</Text>
+                                <View style={styles.dividerLine} />
+                            </View>
 
-                        {/* Entrar em Grupo */}
-                        <View style={styles.section}>
-                            <Text style={styles.sectionTitle}>Entrar em Grupo Existente</Text>
-                            <TextInput
-                                style={styles.input}
-                                placeholder="Código do grupo (6 caracteres)"
-                                placeholderTextColor={theme.colors.textMuted}
-                                value={joinCode}
-                                onChangeText={setJoinCode}
-                                autoCapitalize="characters"
-                                maxLength={6}
-                            />
+                            {/* Entrar em Grupo */}
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Entrar em grupo existente</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Código (6 caracteres)"
+                                    placeholderTextColor={theme.colors.textMuted}
+                                    value={joinCode}
+                                    onChangeText={setJoinCode}
+                                    autoCapitalize="characters"
+                                    maxLength={6}
+                                />
+                            </View>
                             <TouchableOpacity
                                 style={[styles.button, styles.joinButton, creating && styles.buttonDisabled]}
                                 onPress={handleJoinGroup}
@@ -456,14 +500,14 @@ export default function GroupScreen({ navigation }: any) {
                                 )}
                             </TouchableOpacity>
                         </View>
+
+                        {/* Botão de Logout para quando não tem grupos */}
+                        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+                            <Ionicons name="log-out-outline" size={20} color={theme.colors.danger} />
+                            <Text style={styles.logoutButtonText}>Sair da Conta</Text>
+                        </TouchableOpacity>
                     </View>
                 )}
-
-                {/* Botão de Logout */}
-                <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-                    <Ionicons name="log-out-outline" size={20} color={theme.colors.white} />
-                    <Text style={styles.logoutButtonText}>Sair da Conta</Text>
-                </TouchableOpacity>
             </ScrollView>
 
             {/* Modal de Gerenciamento de Membros */}
@@ -489,20 +533,20 @@ export default function GroupScreen({ navigation }: any) {
 
                         {/* Código do Grupo */}
                         <View style={styles.modalSection}>
-                            <View style={styles.codeRow}>
-                                <View>
-                                    <Text style={styles.modalSectionTitle}>Código do Grupo</Text>
+                            <Text style={styles.modalSectionTitle}>Código do Grupo</Text>
+                            <View style={styles.codeContainer}>
+                                <View style={styles.codeRow}>
                                     <Text style={styles.codeText}>{selectedGroup?.code}</Text>
+                                    {user?.uid === selectedGroup?.ownerId && (
+                                        <TouchableOpacity
+                                            style={styles.regenerateButton}
+                                            onPress={handleRegenerateCode}
+                                        >
+                                            <Ionicons name="refresh" size={18} color={theme.colors.white} />
+                                            <Text style={styles.regenerateButtonText}>Alterar</Text>
+                                        </TouchableOpacity>
+                                    )}
                                 </View>
-                                {user?.uid === selectedGroup?.ownerId && (
-                                    <TouchableOpacity
-                                        style={styles.regenerateButton}
-                                        onPress={handleRegenerateCode}
-                                    >
-                                        <Ionicons name="refresh" size={18} color={theme.colors.white} />
-                                        <Text style={styles.regenerateButtonText}>Alterar</Text>
-                                    </TouchableOpacity>
-                                )}
                             </View>
                         </View>
 
@@ -527,18 +571,21 @@ export default function GroupScreen({ navigation }: any) {
                                         return (
                                             <View style={styles.memberItem}>
                                                 <View style={styles.memberInfo}>
-                                                    <Ionicons
-                                                        name={isOwner ? "star" : "person"}
-                                                        size={20}
-                                                        color={isOwner ? theme.colors.warning : theme.colors.textSecondary}
-                                                    />
+                                                    <View style={[styles.memberAvatar, isOwner && styles.memberAvatarOwner]}>
+                                                        <Ionicons
+                                                            name={isOwner ? "star" : "person"}
+                                                            size={18}
+                                                            color={isOwner ? theme.colors.warning : theme.colors.textSecondary}
+                                                        />
+                                                    </View>
                                                     <View style={styles.memberTextContainer}>
                                                         <Text style={styles.memberName}>
-                                                            {member.displayName || member.email}
+                                                            {member.displayName || member.email.split('@')[0]}
                                                             {isCurrentUser && ' (você)'}
                                                         </Text>
+                                                        <Text style={styles.memberEmail}>{member.email}</Text>
                                                         {isOwner && (
-                                                            <Text style={styles.ownerBadge}>Dono</Text>
+                                                            <Text style={styles.ownerBadge}>Administrador</Text>
                                                         )}
                                                     </View>
                                                 </View>
