@@ -1,0 +1,130 @@
+# 💰 Controle Financeiro
+
+Uma aplicação React Native moderna e elegante para controle financeiro pessoal, com foco em gestão de despesas recorrentes e análise de gastos.
+
+## ✨ Funcionalidades
+
+### 📊 Gestão de Transações
+
+- ✅ Adicionar receitas e despesas
+- ✅ Marcar transações como pagas/não pagas
+- ✅ Categorização automática com cores visuais
+- ✅ Suporte a transações recorrentes
+- ✅ Navegação entre meses
+- ✅ Exclusão de transações
+
+### 🔄 Transações Recorrentes
+
+- Despesas recorrentes (água, energia, internet, etc.) são automaticamente duplicadas para o próximo mês
+- Facilita o planejamento financeiro mensal
+- Previsão de gastos futuros baseada em recorrências
+
+### 📈 Análises e Gráficos
+
+- **Gráfico de Tendência**: Visualize receitas e despesas dos últimos 6 meses
+- **Gráfico de Pizza**: Distribuição de gastos por categoria
+- **Previsão do Próximo Mês**: Baseada em despesas recorrentes
+- **Detalhamento por Categoria**: Valores e percentuais de cada categoria
+
+### 🎨 Categorias Disponíveis
+
+- 💧 Água
+- ⚡ Energia
+- 📡 Internet
+- 🍔 Alimentação
+- 🚗 Transporte
+- 🏥 Saúde
+- 📚 Educação
+- 🎮 Lazer
+- 📦 Outros
+
+## 🚀 Como Executar
+
+### Pré-requisitos
+
+- Node.js instalado
+- Expo CLI
+- Expo Go app no seu dispositivo móvel (opcional)
+
+### Instalação
+
+1. As dependências já foram instaladas. Se precisar reinstalar:
+
+```bash
+npm install
+```
+
+2. Iniciar o servidor de desenvolvimento:
+
+```bash
+npm start
+```
+
+3. Executar em diferentes plataformas:
+
+```bash
+# Android
+npm run android
+
+# iOS
+npm run ios
+
+# Web
+npm run web
+```
+
+## 🎨 Design
+
+A aplicação utiliza um **tema dark moderno** com:
+
+- Paleta de cores vibrantes e harmoniosas
+- Gradientes suaves
+- Sombras e elevações para profundidade
+- Micro-animações para melhor UX
+- Design responsivo e intuitivo
+
+### Cores Principais
+
+- **Primary**: Índigo (#6366F1)
+- **Success**: Verde (#10B981)
+- **Danger**: Vermelho (#EF4444)
+- **Background**: Slate escuro (#0F172A)
+
+## 📱 Estrutura do Projeto
+
+```
+src/
+├── navigation/        # Configuração de navegação
+├── screens/          # Telas da aplicação
+│   ├── HomeScreen.tsx           # Lista de transações
+│   ├── AddTransactionScreen.tsx # Adicionar transação
+│   └── ChartsScreen.tsx         # Gráficos e análises
+├── services/         # Serviços (storage, etc)
+├── types/           # Definições TypeScript
+└── theme/           # Sistema de design
+```
+
+## 💾 Armazenamento
+
+Os dados são armazenados localmente usando **AsyncStorage**, garantindo:
+
+- Persistência de dados
+- Acesso offline
+- Performance otimizada
+
+## 🔮 Funcionalidades Futuras
+
+- [ ] Exportação de relatórios em PDF
+- [ ] Backup na nuvem
+- [ ] Múltiplas contas/carteiras
+- [ ] Metas de economia
+- [ ] Notificações de vencimento
+- [ ] Sincronização entre dispositivos
+
+## 📄 Licença
+
+Este projeto foi criado para fins educacionais e de demonstração.
+
+---
+
+Desenvolvido com ❤️ usando React Native + Expo

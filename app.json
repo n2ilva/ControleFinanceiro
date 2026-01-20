@@ -1,30 +1,44 @@
 {
   "expo": {
-    "name": "Jogos",
-    "slug": "Jogos",
+    "name": "Controle Financeiro",
+    "slug": "controle-financeiro",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#0F172A"
     },
     "ios": {
+      "bundleIdentifier": "com.seuusuario.controlefinanceiro",
       "supportsTablet": true
     },
     "android": {
+      "package": "com.n2ilva.controlefinanceiro",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
-      },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+        "backgroundColor": "#0F172A"
+      }
     },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que o App acesse a câmera para ler QR Codes de Notas Fiscais."
+        }
+      ]
+    ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "38f77e21-2a2b-4fe8-8c49-f0c67c13d767"
+      }
     }
   }
 }
