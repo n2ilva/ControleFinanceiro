@@ -61,7 +61,7 @@ export default function AddSalaryScreen({ navigation }: any) {
         }
 
         const numericAmount = parseFloat(amount) / 100;
-        if (!amount || isNaN(numericAmount) || numericAmount <= 0) {
+        if (!amount || isNaN(numericAmount) || numericAmount < 0) {
             Alert.alert('Erro', 'Por favor, informe um valor válido');
             return;
         }

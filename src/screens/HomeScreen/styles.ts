@@ -126,7 +126,7 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: theme.spacing.sm,
+        gap: theme.spacing.md,
     },
     transactionInfo: {
         flex: 1,
@@ -141,8 +141,9 @@ const styles = StyleSheet.create({
     transactionMeta: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing.sm,
-        marginTop: 6,
+        flexWrap: 'wrap',
+        gap: theme.spacing.xs,
+        marginTop: 4,
     },
     categoryBadge: {
         backgroundColor: theme.colors.surface,
@@ -294,7 +295,9 @@ const styles = StyleSheet.create({
     },
     amountAndPaidBadge: {
         alignItems: 'flex-end',
-        gap: 4,
+        justifyContent: 'flex-start',
+        gap: 6,
+        minWidth: 90,
     },
     paidBadge: {
         flexDirection: 'row',
@@ -307,6 +310,30 @@ const styles = StyleSheet.create({
     },
     paidBadgeText: {
         fontSize: 10,
+        color: theme.colors.white,
+        fontWeight: 'bold',
+    },
+    paidBadgeButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 8,
+        paddingVertical: 4,
+        borderRadius: 12,
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+    },
+    paidBadgeButtonActive: {
+        backgroundColor: theme.colors.success,
+        borderColor: theme.colors.success,
+    },
+    paidBadgeButtonText: {
+        fontSize: 11,
+        color: theme.colors.textSecondary,
+        fontWeight: theme.fontWeight.medium,
+    },
+    paidBadgeButtonTextActive: {
         color: theme.colors.white,
         fontWeight: 'bold',
     },

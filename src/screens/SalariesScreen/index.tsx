@@ -128,6 +128,7 @@ export default function SalariesScreen() {
                     onPress: async () => {
                         try {
                             await SalaryFirestoreService.deleteSalary(id);
+                            setModalVisible(false);
                             loadSalaries();
                         } catch (error) {
                             Alert.alert('Erro', 'Não foi possível excluir o salário');
@@ -187,13 +188,6 @@ export default function SalariesScreen() {
                             onPress={() => openEditModal(item)}
                         >
                             <Ionicons name="pencil" size={20} color={theme.colors.primary} />
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.deleteButton}
-                            onPress={() => deleteSalary(item.id)}
-                        >
-                            <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -288,6 +282,16 @@ export default function SalariesScreen() {
                                     <Text style={styles.saveButtonText}>Salvar</Text>
                                 </TouchableOpacity>
                             </View>
+
+                            {editingSalary && (
+                                <TouchableOpacity
+                                    style={styles.deleteButtonModal}
+                                    onPress={() => deleteSalary(editingSalary.id)}
+                                >
+                                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                                    <Text style={styles.deleteButtonModalText}>Excluir Salário</Text>
+                                </TouchableOpacity>
+                            )}
                         </View>
                     </View>
                 </View>

@@ -216,6 +216,21 @@ const styles = StyleSheet.create({
         fontWeight: theme.fontWeight.bold,
         color: theme.colors.white,
     },
+    deleteButtonModal: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: theme.spacing.sm,
+        paddingVertical: theme.spacing.md,
+        marginTop: theme.spacing.lg,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+    },
+    deleteButtonModalText: {
+        fontSize: theme.fontSize.md,
+        color: theme.colors.danger,
+        fontWeight: theme.fontWeight.medium,
+    },
 });
 
 export default styles;

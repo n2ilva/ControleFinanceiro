@@ -73,28 +73,6 @@ export default function HomeScreen({ navigation }: any) {
         }
     };
 
-    const deleteTransaction = async (id: string) => {
-        Alert.alert(
-            'Confirmar Exclusão',
-            'Deseja realmente excluir esta transação?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Excluir',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            await FirestoreService.deleteTransaction(id);
-                            loadTransactions();
-                        } catch (error) {
-                            Alert.alert('Erro', 'Não foi possível excluir a transação');
-                        }
-                    },
-                },
-            ]
-        );
-    };
-
     const changeMonth = (direction: 'prev' | 'next') => {
         if (direction === 'prev') {
             if (currentMonth === 0) {
@@ -235,39 +213,23 @@ export default function HomeScreen({ navigation }: any) {
                                 </Text>
                             )}
 
-                            {/* Mostra badge "Pago" se está marcado como pago */}
-                            {item.isPaid && (
-                                <View style={styles.paidBadge}>
-                                    <Ionicons name="checkmark-circle" size={10} color={theme.colors.white} />
-                                    <Text style={styles.paidBadgeText}>Pago</Text>
-                                </View>
+                            {/* Botão Pagar/Pago para despesas */}
+                            {item.type === 'expense' && (
+                                <TouchableOpacity
+                                    style={[styles.paidBadgeButton, item.isPaid && styles.paidBadgeButtonActive]}
+                                    onPress={() => togglePaid(item)}
+                                >
+                                    <Ionicons
+                                        name={item.isPaid ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                                        size={12}
+                                        color={item.isPaid ? theme.colors.white : theme.colors.textSecondary}
+                                    />
+                                    <Text style={[styles.paidBadgeButtonText, item.isPaid && styles.paidBadgeButtonTextActive]}>
+                                        {item.isPaid ? 'Pago' : 'Pagar'}
+                                    </Text>
+                                </TouchableOpacity>
                             )}
                         </View>
-                    </View>
-
-                    <View style={styles.transactionActions}>
-                        {item.type === 'expense' && (
-                            <TouchableOpacity
-                                style={[styles.paidButton, item.isPaid && styles.paidButtonActive]}
-                                onPress={() => togglePaid(item)}
-                            >
-                                <Ionicons
-                                    name={item.isPaid ? 'checkmark-circle' : 'checkmark-circle-outline'}
-                                    size={20}
-                                    color={item.isPaid ? theme.colors.success : theme.colors.textSecondary}
-                                />
-                                <Text style={[styles.paidButtonText, item.isPaid && styles.paidButtonTextActive]}>
-                                    {item.isPaid ? 'Pago' : 'Pagar'}
-                                </Text>
-                            </TouchableOpacity>
-                        )}
-
-                        <TouchableOpacity
-                            style={styles.deleteButton}
-                            onPress={() => deleteTransaction(item.id)}
-                        >
-                            <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
-                        </TouchableOpacity>
                     </View>
                 </View>
             </TouchableOpacity>

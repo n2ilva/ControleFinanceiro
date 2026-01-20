@@ -129,6 +129,22 @@ const styles = StyleSheet.create({
         fontWeight: theme.fontWeight.bold,
         color: theme.colors.white,
     },
+    deleteButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: theme.spacing.sm,
+        paddingVertical: theme.spacing.md,
+        marginTop: theme.spacing.lg,
+        marginBottom: theme.spacing.xl,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+    },
+    deleteButtonText: {
+        fontSize: theme.fontSize.md,
+        color: theme.colors.danger,
+        fontWeight: theme.fontWeight.medium,
+    },
 });
 
 export default styles;

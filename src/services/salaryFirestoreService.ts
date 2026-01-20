@@ -7,16 +7,31 @@ import {
   query,
   where,
   getDocs,
+  setDoc,
   Timestamp,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { Salary } from '../types';
 import { AuthService } from './authService';
 
+export interface SalaryAdjustment {
+  salaryId: string;
+  year: number;
+  month: number;
+  amount: number;
+  description?: string;
+  userId: string;
+}
+
 export const SalaryFirestoreService = {
   // Obter referência da coleção de salários
   getSalariesCollection() {
     return collection(db, 'salaries');
+  },
+
+  // Obter referência da coleção de ajustes de salário
+  getSalaryAdjustmentsCollection() {
+    return collection(db, 'salaryAdjustments');
   },
 
   // Adicionar salário
@@ -115,6 +130,112 @@ export const SalaryFirestoreService = {
     } catch (error) {
       console.error('Error calculating total salaries:', error);
       return 0;
+    }
+  },
+
+  // Salvar ajuste mensal de salário
+  async saveSalaryAdjustment(salaryId: string, year: number, month: number, amount: number, description?: string): Promise<void> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      // Usar um ID determinístico para facilitar atualizações
+      const adjustmentId = `${salaryId}_${year}_${month}`;
+      const docRef = doc(db, 'salaryAdjustments', adjustmentId);
+      
+      await setDoc(docRef, {
+        salaryId,
+        year,
+        month,
+        amount,
+        ...(description && { description }),
+        userId: user.uid,
+        updatedAt: Timestamp.now(),
+      });
+    } catch (error) {
+      console.error('Error saving salary adjustment:', error);
+      throw error;
+    }
+  },
+
+  // Obter ajustes de salário do usuário para um mês específico
+  async getSalaryAdjustments(year: number, month: number): Promise<SalaryAdjustment[]> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) return [];
+
+      const q = query(
+        this.getSalaryAdjustmentsCollection(),
+        where('userId', '==', user.uid),
+        where('year', '==', year),
+        where('month', '==', month)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const adjustments: SalaryAdjustment[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        adjustments.push({
+          salaryId: data.salaryId,
+          year: data.year,
+          month: data.month,
+          amount: data.amount,
+          ...(data.description && { description: data.description }),
+          userId: data.userId,
+        });
+      });
+
+      return adjustments;
+    } catch (error) {
+      console.error('Error getting salary adjustments:', error);
+      return [];
+    }
+  },
+
+  // Obter todos os ajustes de um salário específico
+  async getAdjustmentsForSalary(salaryId: string): Promise<SalaryAdjustment[]> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) return [];
+
+      const q = query(
+        this.getSalaryAdjustmentsCollection(),
+        where('userId', '==', user.uid),
+        where('salaryId', '==', salaryId)
+      );
+
+      const querySnapshot = await getDocs(q);
+      const adjustments: SalaryAdjustment[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        adjustments.push({
+          salaryId: data.salaryId,
+          year: data.year,
+          month: data.month,
+          amount: data.amount,
+          ...(data.description && { description: data.description }),
+          userId: data.userId,
+        });
+      });
+
+      return adjustments;
+    } catch (error) {
+      console.error('Error getting adjustments for salary:', error);
+      return [];
+    }
+  },
+
+  // Deletar ajuste mensal
+  async deleteSalaryAdjustment(salaryId: string, year: number, month: number): Promise<void> {
+    try {
+      const adjustmentId = `${salaryId}_${year}_${month}`;
+      const docRef = doc(db, 'salaryAdjustments', adjustmentId);
+      await deleteDoc(docRef);
+    } catch (error) {
+      console.error('Error deleting salary adjustment:', error);
+      throw error;
     }
   },
 };

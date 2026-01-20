@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { CreditCard, Transaction } from '../../types';
 import { FirestoreService } from '../../services/firestoreService';
+import { SalaryFirestoreService } from '../../services/salaryFirestoreService';
 import { theme } from '../../theme';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreditCardFirestoreService } from '../../services/creditCardFirestoreService';
@@ -99,7 +100,7 @@ export default function EditTransactionScreen({ route, navigation }: any) {
 
         const numericAmount = parseFloat(amount) / 100;
 
-        if (!amount || numericAmount <= 0) {
+        if (!amount || numericAmount < 0) {
             Alert.alert('Erro', 'Por favor, insira um valor válido');
             return;
         }
@@ -140,25 +141,80 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                 }
             }
 
-            await FirestoreService.updateTransaction(transaction.id, {
-                description: description.trim(),
-                amount: numericAmount,
-                dueDate: dueDateISO,
-                ...(transaction.type === 'expense'
-                    ? selectedCardId
-                        ? { cardId: selectedCardId, cardName: selectedCardName, cardType: selectedCardType }
+            // Verificar se é um salário (ID começa com 'salary_')
+            if (transaction.isSalary && transaction.id.startsWith('salary_')) {
+                // Extrair dados do ID: salary_{salaryId}_{year}_{month}
+                const parts = transaction.id.split('_');
+                const salaryId = parts[1]; // O ID real do salário no Firestore
+                const year = parseInt(parts[2]);
+                const month = parseInt(parts[3]);
+                
+                // Salvar como ajuste mensal (não altera o salário base)
+                await SalaryFirestoreService.saveSalaryAdjustment(
+                    salaryId,
+                    year,
+                    month,
+                    numericAmount,
+                    description.trim()
+                );
+            } else {
+                await FirestoreService.updateTransaction(transaction.id, {
+                    description: description.trim(),
+                    amount: numericAmount,
+                    ...(transaction.type === 'expense' && { dueDate: dueDateISO || null }),
+                    ...(transaction.type === 'expense'
+                        ? selectedCardId
+                            ? { cardId: selectedCardId, cardName: selectedCardName, cardType: selectedCardType }
+                            : { cardId: null, cardName: null, cardType: null }
                         : { cardId: null, cardName: null, cardType: null }
-                    : { cardId: null, cardName: null, cardType: null }
-                ),
-                ...(transaction.type === 'income' && { receivedDate: receivedDateISO || null }),
-            });
+                    ),
+                    ...(transaction.type === 'income' && { receivedDate: receivedDateISO || null }),
+                });
+            }
 
             Alert.alert('Sucesso', 'Transação atualizada com sucesso!', [
                 { text: 'OK', onPress: () => navigation.goBack() },
             ]);
         } catch (error) {
+            console.error('Error updating transaction:', error);
             Alert.alert('Erro', 'Não foi possível atualizar a transação');
         }
+    };
+
+    const handleDelete = () => {
+        const isSalary = transaction.isSalary && transaction.id.startsWith('salary_');
+        
+        Alert.alert(
+            'Excluir',
+            isSalary 
+                ? 'Deseja excluir este salário permanentemente? Isso removerá o salário de todos os meses.'
+                : 'Tem certeza que deseja excluir esta transação?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Excluir',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            if (isSalary) {
+                                // Extrair o ID real do salário: salary_{salaryId}_{year}_{month}
+                                const parts = transaction.id.split('_');
+                                const salaryId = parts[1];
+                                await SalaryFirestoreService.deleteSalary(salaryId);
+                            } else {
+                                await FirestoreService.deleteTransaction(transaction.id);
+                            }
+                            Alert.alert('Sucesso', 'Excluído com sucesso!', [
+                                { text: 'OK', onPress: () => navigation.goBack() },
+                            ]);
+                        } catch (error) {
+                            console.error('Error deleting:', error);
+                            Alert.alert('Erro', 'Não foi possível excluir');
+                        }
+                    },
+                },
+            ]
+        );
     };
 
     return (
@@ -298,6 +354,14 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                         <Text style={styles.saveButtonText}>Salvar Alterações</Text>
                     </TouchableOpacity>
                 </View>
+
+                <TouchableOpacity
+                    style={styles.deleteButton}
+                    onPress={handleDelete}
+                >
+                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                    <Text style={styles.deleteButtonText}>Excluir {transaction.isSalary ? 'Salário' : 'Transação'}</Text>
+                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );

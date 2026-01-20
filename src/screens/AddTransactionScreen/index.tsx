@@ -162,7 +162,7 @@ export default function AddTransactionScreen({ navigation, route }: any) {
 
         const numericAmount = parseFloat(amount) / 100;
 
-        if (!amount || numericAmount <= 0) {
+        if (!amount || numericAmount < 0) {
             Alert.alert('Erro', 'Por favor, insira um valor válido');
             return;
         }

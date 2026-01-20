@@ -205,6 +205,9 @@ export const FirestoreService = {
       const transactions = await this.getTransactions();
 
       const activeSalaries = await SalaryFirestoreService.getActiveSalaries();
+      // Carregar ajustes mensais de salário
+      const salaryAdjustments = await SalaryFirestoreService.getSalaryAdjustments(year, month);
+      
       const salaryTransactions: Transaction[] = activeSalaries.map((salary) => {
         let day = 1;
         if (salary.paymentDate) {
@@ -225,11 +228,15 @@ export const FirestoreService = {
           dateObj.setDate(0);
         }
 
+        // Verificar se há ajuste para este salário neste mês
+        const adjustment = salaryAdjustments.find(adj => adj.salaryId === salary.id);
+        const adjustedAmount = adjustment ? adjustment.amount : salary.amount;
+
         return {
           id: `salary_${salary.id}_${year}_${month}`,
-          description: salary.company || salary.description,
-          amount: salary.amount,
-          originalAmount: salary.originalAmount,
+          description: adjustment?.description || salary.company || salary.description,
+          amount: adjustedAmount,
+          originalAmount: salary.amount, // Manter o valor original para comparação
           category: salary.salaryType === 'salary' ? 'salario' : 'extra',
           isRecurring: true,
           isPaid: true,

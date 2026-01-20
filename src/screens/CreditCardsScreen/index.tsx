@@ -110,6 +110,7 @@ export default function CreditCardsScreen() {
                     onPress: async () => {
                         try {
                             await CreditCardFirestoreService.deleteCreditCard(id);
+                            setModalVisible(false);
                             loadCards();
                         } catch (error) {
                             Alert.alert('Erro', 'Não foi possível excluir o cartão');
@@ -137,9 +138,6 @@ export default function CreditCardsScreen() {
             <View style={styles.cardActions}>
                 <TouchableOpacity style={styles.editButton} onPress={() => openEditModal(item)}>
                     <Ionicons name="pencil" size={20} color={theme.colors.primary} />
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.deleteButton} onPress={() => deleteCard(item.id)}>
-                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
                 </TouchableOpacity>
             </View>
         </View>
@@ -252,6 +250,16 @@ export default function CreditCardsScreen() {
                                 <Text style={styles.saveButtonText}>Salvar</Text>
                             </TouchableOpacity>
                         </View>
+
+                        {editingCard && (
+                            <TouchableOpacity
+                                style={styles.deleteButtonModal}
+                                onPress={() => deleteCard(editingCard.id)}
+                            >
+                                <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
+                                <Text style={styles.deleteButtonText}>Excluir Cartão</Text>
+                            </TouchableOpacity>
+                        )}
                     </View>
                 </View>
             </Modal>
