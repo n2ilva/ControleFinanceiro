@@ -30,7 +30,8 @@
         {
           "cameraPermission": "Permitir que o App acesse a câmera para ler QR Codes de Notas Fiscais."
         }
-      ]
+      ],
+      "expo-font"
     ],
     "web": {
       "favicon": "./assets/favicon.png"

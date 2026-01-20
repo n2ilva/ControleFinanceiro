@@ -292,4 +292,137 @@ export const GroupService = {
       return null;
     }
   },
+
+  // Remover membro do grupo (apenas o dono pode fazer isso)
+  async removeMember(groupId: string, memberId: string): Promise<void> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      // Verificar se é o dono do grupo
+      const groupRef = doc(db, 'groups', groupId);
+      const groupDoc = await getDoc(groupRef);
+
+      if (!groupDoc.exists()) {
+        throw new Error('Grupo não encontrado');
+      }
+
+      const groupData = groupDoc.data();
+      if (groupData.ownerId !== user.uid) {
+        throw new Error('Apenas o dono do grupo pode remover membros');
+      }
+
+      // Não pode remover a si mesmo (dono)
+      if (memberId === user.uid) {
+        throw new Error('O dono não pode ser removido do grupo');
+      }
+
+      // Remover membro do grupo
+      await updateDoc(groupRef, {
+        members: arrayRemove(memberId),
+      });
+
+      // Remover grupo do perfil do membro removido
+      const memberRef = doc(db, 'users', memberId);
+      const memberDoc = await getDoc(memberRef);
+
+      if (memberDoc.exists()) {
+        const memberData = memberDoc.data();
+        const memberGroupIds = (memberData.groupIds || []).filter((id: string) => id !== groupId);
+
+        const updates: any = {
+          groupIds: memberGroupIds,
+        };
+
+        // Se era o grupo ativo do membro, mudar para outro ou remover
+        if (memberData.activeGroupId === groupId) {
+          updates.activeGroupId = memberGroupIds.length > 0 ? memberGroupIds[0] : null;
+        }
+
+        await updateDoc(memberRef, updates);
+      }
+    } catch (error: any) {
+      console.error('Error removing member:', error);
+      throw error;
+    }
+  },
+
+  // Regenerar código do grupo (apenas o dono pode fazer isso)
+  async regenerateGroupCode(groupId: string): Promise<string> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) throw new Error('Usuário não autenticado');
+
+      // Verificar se é o dono do grupo
+      const groupRef = doc(db, 'groups', groupId);
+      const groupDoc = await getDoc(groupRef);
+
+      if (!groupDoc.exists()) {
+        throw new Error('Grupo não encontrado');
+      }
+
+      const groupData = groupDoc.data();
+      if (groupData.ownerId !== user.uid) {
+        throw new Error('Apenas o dono do grupo pode alterar o código');
+      }
+
+      // Gerar novo código
+      const newCode = this.generateGroupCode();
+
+      // Atualizar no Firestore
+      await updateDoc(groupRef, {
+        code: newCode,
+      });
+
+      return newCode;
+    } catch (error: any) {
+      console.error('Error regenerating group code:', error);
+      throw error;
+    }
+  },
+
+  // Obter perfis dos membros do grupo
+  async getMemberProfiles(memberIds: string[]): Promise<{ id: string; email: string; displayName: string }[]> {
+    try {
+      const profiles: { id: string; email: string; displayName: string }[] = [];
+
+      for (const memberId of memberIds) {
+        const profile = await this.getUserProfile(memberId);
+        if (profile) {
+          profiles.push({
+            id: profile.id,
+            email: profile.email || '',
+            displayName: profile.displayName || profile.email || 'Usuário',
+          });
+        } else {
+          // Usuário sem perfil completo
+          profiles.push({
+            id: memberId,
+            email: '',
+            displayName: 'Usuário',
+          });
+        }
+      }
+
+      return profiles;
+    } catch (error) {
+      console.error('Error getting member profiles:', error);
+      return [];
+    }
+  },
+
+  // Verificar se o usuário atual é dono do grupo
+  async isGroupOwner(groupId: string): Promise<boolean> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) return false;
+
+      const groupDoc = await getDoc(doc(db, 'groups', groupId));
+      if (!groupDoc.exists()) return false;
+
+      return groupDoc.data().ownerId === user.uid;
+    } catch (error) {
+      return false;
+    }
+  },
 };

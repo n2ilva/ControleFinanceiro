@@ -13,9 +13,37 @@ import { useFocusEffect } from '@react-navigation/native';
 import { FirestoreService } from '../services/firestoreService';
 import { Transaction } from '../types';
 import { theme } from '../theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// Mapeamento de categorias para ícones
+const CATEGORY_ICONS: { [key: string]: string } = {
+    // Despesas
+    agua: 'water',
+    energia: 'flash',
+    internet: 'wifi',
+    alimentacao: 'restaurant',
+    transporte: 'car',
+    saude: 'medical',
+    educacao: 'school',
+    lazer: 'game-controller',
+    // Receitas
+    salario: 'cash',
+    deposito: 'card',
+    extra: 'gift',
+    // Padrão
+    outros: 'ellipsis-horizontal',
+};
+
+// Função para formatar valor com separador de milhar (padrão brasileiro)
+const formatCurrency = (value: number): string => {
+    return value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+};
 
 export default function HomeScreen({ navigation }: any) {
+    const insets = useSafeAreaInsets();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -107,6 +135,7 @@ export default function HomeScreen({ navigation }: any) {
     const renderTransaction = ({ item }: { item: Transaction }) => {
         const isExpense = item.type === 'expense';
         const categoryColor = theme.colors.categories[item.category as keyof typeof theme.colors.categories] || theme.colors.categories.outros;
+        const categoryIcon = CATEGORY_ICONS[item.category] || CATEGORY_ICONS.outros;
 
         return (
             <TouchableOpacity
@@ -121,7 +150,15 @@ export default function HomeScreen({ navigation }: any) {
                         <View style={styles.transactionInfo}>
                             <Text style={styles.transactionDescription}>{item.description}</Text>
                             <View style={styles.transactionMeta}>
-                                {item.category && <Text style={styles.transactionCategory}>{item.category}</Text>}
+                                {item.category && (
+                                    <View style={styles.categoryBadge}>
+                                        <Ionicons
+                                            name={categoryIcon as any}
+                                            size={14}
+                                            color={categoryColor}
+                                        />
+                                    </View>
+                                )}
                                 {item.isRecurring && (
                                     <View style={styles.recurringBadge}>
                                         <Ionicons name="repeat" size={12} color={theme.colors.primary} />
@@ -154,7 +191,7 @@ export default function HomeScreen({ navigation }: any) {
                             {item.originalAmount !== undefined && item.amount !== item.originalAmount ? (
                                 <View style={{ alignItems: 'flex-end' }}>
                                     <Text style={[styles.transactionAmount, { color: theme.colors.textMuted, fontSize: 12, textDecorationLine: 'line-through' }]}>
-                                        R$ {item.originalAmount.toFixed(2)}
+                                        R$ {formatCurrency(item.originalAmount)}
                                     </Text>
                                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                                         {item.amount > item.originalAmount && (
@@ -173,7 +210,7 @@ export default function HomeScreen({ navigation }: any) {
                                                 }
                                             ]}
                                         >
-                                            R$ {item.amount.toFixed(2)}
+                                            R$ {formatCurrency(item.amount)}
                                         </Text>
                                     </View>
                                 </View>
@@ -185,7 +222,7 @@ export default function HomeScreen({ navigation }: any) {
                                     ]}
                                 >
                                     {item.type === 'expense' ? '- ' : '+ '}
-                                    R$ {item.amount.toFixed(2)}
+                                    R$ {formatCurrency(item.amount)}
                                 </Text>
                             )}
 
@@ -241,13 +278,13 @@ export default function HomeScreen({ navigation }: any) {
         });
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
             {/* Header com saldo */}
             <View style={styles.header}>
                 <View style={styles.balanceCard}>
                     <Text style={styles.balanceLabel}>Saldo do Mês</Text>
                     <Text style={[styles.balanceAmount, monthlyData.balance >= 0 ? styles.positiveBalance : styles.negativeBalance]}>
-                        R$ {monthlyData.balance.toFixed(2)}
+                        R$ {formatCurrency(monthlyData.balance)}
                     </Text>
 
                     <View style={styles.balanceDetails}>
@@ -255,7 +292,7 @@ export default function HomeScreen({ navigation }: any) {
                             <Ionicons name="arrow-down-circle" size={20} color={theme.colors.success} />
                             <View style={styles.balanceItemText}>
                                 <Text style={styles.balanceItemLabel}>Receitas</Text>
-                                <Text style={styles.balanceItemValue}>R$ {monthlyData.totalIncome.toFixed(2)}</Text>
+                                <Text style={styles.balanceItemValue}>R$ {formatCurrency(monthlyData.totalIncome)}</Text>
                             </View>
                         </View>
 
@@ -263,7 +300,7 @@ export default function HomeScreen({ navigation }: any) {
                             <Ionicons name="arrow-up-circle" size={20} color={theme.colors.danger} />
                             <View style={styles.balanceItemText}>
                                 <Text style={styles.balanceItemLabel}>Despesas</Text>
-                                <Text style={styles.balanceItemValue}>R$ {monthlyData.totalExpenses.toFixed(2)}</Text>
+                                <Text style={styles.balanceItemValue}>R$ {formatCurrency(monthlyData.totalExpenses)}</Text>
                             </View>
                         </View>
                     </View>
@@ -314,7 +351,7 @@ export default function HomeScreen({ navigation }: any) {
                 data={filteredTransactions}
                 renderItem={renderTransaction}
                 keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.listContent}
+                contentContainerStyle={[styles.listContent, { paddingBottom: 100 + 60 + insets.bottom }]}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
                 }
@@ -329,12 +366,12 @@ export default function HomeScreen({ navigation }: any) {
 
             {/* Botão flutuante para adicionar */}
             <TouchableOpacity
-                style={styles.fab}
+                style={[styles.fab, { bottom: 70 + insets.bottom }]}
                 onPress={() => navigation.navigate('AddTransaction')}
             >
                 <Ionicons name="add" size={32} color={theme.colors.white} />
             </TouchableOpacity>
-        </SafeAreaView>
+        </View>
     );
 }
 
@@ -345,7 +382,7 @@ const styles = StyleSheet.create({
     },
     header: {
         padding: theme.spacing.md,
-        paddingTop: theme.spacing.xl,
+        // paddingTop removed as it is handled by inline style with insets
     },
     balanceCard: {
         backgroundColor: theme.colors.backgroundCard,
@@ -411,7 +448,7 @@ const styles = StyleSheet.create({
     },
     listContent: {
         padding: theme.spacing.md,
-        paddingBottom: 100,
+        // paddingBottom handled via inline
     },
     transactionCard: {
         backgroundColor: theme.colors.backgroundCard,
@@ -449,6 +486,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         gap: theme.spacing.sm,
         marginTop: 6,
+    },
+    categoryBadge: {
+        backgroundColor: theme.colors.surface,
+        padding: 6,
+        borderRadius: theme.borderRadius.sm,
+        alignItems: 'center',
+        justifyContent: 'center',
     },
     transactionCategory: {
         fontSize: theme.fontSize.sm,
@@ -625,7 +669,7 @@ const styles = StyleSheet.create({
     fab: {
         position: 'absolute',
         right: theme.spacing.md,
-        bottom: theme.spacing.md,
+        // bottom removed as it is handled via inline style
         width: 64,
         height: 64,
         borderRadius: theme.borderRadius.full,

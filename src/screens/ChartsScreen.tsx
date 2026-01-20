@@ -14,9 +14,17 @@ import { useFocusEffect } from '@react-navigation/native';
 import { FirestoreService } from '../services/firestoreService';
 import { CategoryData, Transaction } from '../types';
 import { theme } from '../theme';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const screenWidth = Dimensions.get('window').width;
+
+// Função para formatar valor com separador de milhar (padrão brasileiro)
+const formatCurrency = (value: number): string => {
+    return value.toLocaleString('pt-BR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+};
 
 interface Insight {
     type: 'success' | 'warning' | 'danger' | 'info';
@@ -35,6 +43,7 @@ interface MonthSummary {
 }
 
 export default function ChartsScreen() {
+    const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(true);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -104,7 +113,7 @@ export default function ChartsScreen() {
             newInsights.push({
                 type: 'danger',
                 title: 'Saldo Negativo!',
-                message: `Seu saldo em conta está negativo em R$ ${Math.abs(realBalance).toFixed(2)}. Priorize quitar dívidas.`,
+                message: `Seu saldo em conta está negativo em R$ ${formatCurrency(Math.abs(realBalance))}. Priorize quitar dívidas.`,
                 icon: 'alert-circle'
             });
         }
@@ -144,13 +153,6 @@ export default function ChartsScreen() {
                 .reduce((acc, t) => acc + (t.type === 'income' ? t.amount : -t.amount), 0);
 
             // Gerar histórico do Ano Atual (Janeiro -> Mês Atual + 1 (Previsão))
-            // O pedido menciona "previsao do mes seguinte". Podemos incluir o mês seguinte no gráfico?
-            // "abaixo da previsao do mes seguinte tem 3 cards...". Parece que ele quer ver o mês seguinte também.
-            // O pedido anterior restringiu ao "ano atual".
-            // Vamos fazer Janeiro até Mês Atual (para gráfico de tendência "realizado").
-            // E adicionar o Mês Seguinte como opção clicável? ChartKit não mistura bem tipos.
-            // Vamos manter o gráfico até o mês ATUAL, como definido antes.
-
             const history: MonthSummary[] = [];
             const labels: string[] = [];
             const expenses: number[] = [];
@@ -250,7 +252,7 @@ export default function ChartsScreen() {
                         <Text style={styles.categoryName} numberOfLines={1}>{cat.category}</Text>
                     </View>
                     <View style={styles.categoryValues}>
-                        <Text style={styles.categoryAmount}>R$ {cat.amount.toFixed(2)}</Text>
+                        <Text style={styles.categoryAmount}>R$ {formatCurrency(cat.amount)}</Text>
                         <Text style={styles.categoryPercentage}>{cat.percentage.toFixed(1)}%</Text>
                     </View>
                     <View style={styles.progressBarBg}>
@@ -270,8 +272,8 @@ export default function ChartsScreen() {
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
-            <ScrollView contentContainerStyle={styles.content}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+            <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 80 + insets.bottom }]}>
 
                 {/* Insights */}
                 <Text style={styles.sectionTitle}>Insights Inteligentes</Text>
@@ -373,7 +375,7 @@ export default function ChartsScreen() {
                 )}
 
             </ScrollView>
-        </SafeAreaView>
+        </View>
     );
 }
 
