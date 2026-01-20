@@ -48,13 +48,24 @@ Uma aplicação React Native moderna e elegante para controle financeiro pessoal
 
 ### Instalação
 
-1. As dependências já foram instaladas. Se precisar reinstalar:
+1. Clone o repositório:
+```bash
+git clone <seu-repositorio>
+cd ControleFinanceiro
+```
 
+2. Instale as dependências:
 ```bash
 npm install
 ```
 
-2. Iniciar o servidor de desenvolvimento:
+3. **Configure as variáveis de ambiente:**
+```bash
+cp .env.example .env
+```
+Edite o arquivo `.env` e adicione suas credenciais do Firebase.
+
+4. Iniciar o servidor de desenvolvimento:
 
 ```bash
 npm start
@@ -71,7 +82,32 @@ npm run ios
 
 # Web
 npm run web
+
+# Build para produção (GitHub Pages)
+npm run build:web
 ```
+
+## 🔒 Segurança
+
+Este projeto implementa diversas camadas de segurança:
+
+- 🔐 Variáveis de ambiente para credenciais sensíveis
+- 🛡️ Regras de segurança do Firebase (Firestore Rules)
+- 🚨 Proteção contra self-XSS no console
+- 🔑 Autenticação Firebase
+
+**Leia o arquivo [SECURITY.md](SECURITY.md) para mais detalhes sobre configuração de segurança.**
+
+## 🌐 Deploy
+
+### GitHub Pages
+
+O projeto está configurado para deploy automático no GitHub Pages:
+
+1. Configure o GitHub Pages para usar a pasta `/docs`
+2. Execute o build: `npm run build:web`
+3. Faça commit e push dos arquivos
+4. Acesse: `https://seuusuario.github.io/controle-financeiro`
 
 ## 🎨 Design
 
@@ -106,11 +142,12 @@ src/
 
 ## 💾 Armazenamento
 
-Os dados são armazenados localmente usando **AsyncStorage**, garantindo:
+Os dados são armazenados no **Firebase Firestore**, garantindo:
 
-- Persistência de dados
-- Acesso offline
-- Performance otimizada
+- ☁️ Sincronização em tempo real
+- 🔐 Autenticação segura
+- 📱 Acesso multi-dispositivo
+- 🔄 Backup automático na nuvem
 
 ## 🔮 Funcionalidades Futuras
 

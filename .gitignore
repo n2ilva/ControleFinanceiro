@@ -5,8 +5,8 @@ node_modules/
 
 # Expo
 .expo/
-dist/
-web-build/
+# dist/ - comentado para permitir deploy no GitHub Pages
+# web-build/ - comentado para permitir deploy no GitHub Pages
 expo-env.d.ts
 
 # Native
@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
