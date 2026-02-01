@@ -43,6 +43,9 @@ export const FirestoreService = {
         ...(transaction.dueDate && {
           dueDate: Timestamp.fromDate(new Date(transaction.dueDate)),
         }),
+        ...(transaction.receivedDate && {
+          receivedDate: Timestamp.fromDate(new Date(transaction.receivedDate)),
+        }),
       };
 
       // Adicionar transação normalmente (não criar automaticamente 12 meses)
@@ -227,6 +230,17 @@ export const FirestoreService = {
 
       querySnapshot.forEach((doc) => {
         const data = doc.data();
+        
+        // Converter receivedDate de forma segura (pode ser Timestamp ou string)
+        let receivedDateISO: string | undefined;
+        if (data.receivedDate) {
+          if (typeof data.receivedDate.toDate === 'function') {
+            receivedDateISO = data.receivedDate.toDate().toISOString();
+          } else if (typeof data.receivedDate === 'string') {
+            receivedDateISO = data.receivedDate;
+          }
+        }
+        
         transactions.push({
           id: doc.id,
           description: data.description,
@@ -239,6 +253,7 @@ export const FirestoreService = {
           createdAt: data.createdAt.toDate().toISOString(),
           ...(data.isSalary && { isSalary: data.isSalary }),
           ...(data.dueDate && { dueDate: data.dueDate.toDate().toISOString() }),
+          ...(receivedDateISO && { receivedDate: receivedDateISO }),
           ...(data.cardId !== undefined && { cardId: data.cardId }),
           ...(data.cardName !== undefined && { cardName: data.cardName }),
           ...(data.cardType !== undefined && { cardType: data.cardType }),
@@ -265,46 +280,70 @@ export const FirestoreService = {
       // Carregar ajustes mensais de salário
       const salaryAdjustments = await SalaryFirestoreService.getSalaryAdjustments(year, month);
       
-      const salaryTransactions: Transaction[] = activeSalaries.map((salary) => {
-        let day = 1;
-        if (salary.paymentDate) {
-          const match = salary.paymentDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
-          if (match) {
-            day = parseInt(match[1]);
-          } else {
-            const parsed = new Date(salary.paymentDate);
-            if (!isNaN(parsed.getTime())) {
-              day = parsed.getDate();
+      const today = new Date();
+      const currentDay = today.getDate();
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      
+      const salaryTransactions: Transaction[] = activeSalaries
+        .map((salary) => {
+          let day = 1;
+          if (salary.paymentDate) {
+            const match = salary.paymentDate.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+            if (match) {
+              day = parseInt(match[1]);
+            } else {
+              const parsed = new Date(salary.paymentDate);
+              if (!isNaN(parsed.getTime())) {
+                day = parsed.getDate();
+              }
             }
           }
-        }
 
-        const dateObj = new Date(year, month, day);
-        // Ajuste para o último dia do mês se necessário
-        if (dateObj.getMonth() !== month) {
-          dateObj.setDate(0);
-        }
+          const dateObj = new Date(year, month, day);
+          // Ajuste para o último dia do mês se necessário
+          if (dateObj.getMonth() !== month) {
+            dateObj.setDate(0);
+          }
 
-        // Verificar se há ajuste para este salário neste mês
-        const adjustment = salaryAdjustments.find(adj => adj.salaryId === salary.id);
-        const adjustedAmount = adjustment ? adjustment.amount : salary.amount;
+          // Verificar se o salário já deve aparecer:
+          // - Se o mês/ano é anterior ao atual: mostrar
+          // - Se o mês/ano é o atual: só mostrar se o dia de pagamento já passou ou é hoje
+          // - Se o mês/ano é futuro: não mostrar
+          const isCurrentMonth = month === currentMonth && year === currentYear;
+          const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
+          const isFutureMonth = year > currentYear || (year === currentYear && month > currentMonth);
+          
+          const paymentDay = dateObj.getDate();
+          const shouldShow = isPastMonth || (isCurrentMonth && currentDay >= paymentDay);
+          
+          // Se é mês futuro ou o dia de pagamento ainda não chegou, não mostrar
+          if (isFutureMonth || !shouldShow) {
+            return null;
+          }
 
-        return {
-          id: `salary_${salary.id}_${year}_${month}`,
-          description: adjustment?.description || salary.company || salary.description,
-          amount: adjustedAmount,
-          originalAmount: salary.amount, // Manter o valor original para comparação
-          category: salary.salaryType === 'salary' ? 'salario' : 'extra',
-          isRecurring: true,
-          isPaid: true,
-          type: 'income',
-          date: dateObj.toISOString(),
-          createdAt: salary.createdAt,
-          isSalary: true,
-          userId: salary.userId,
-        };
-      });
+          // Verificar se há ajuste para este salário neste mês
+          const adjustment = salaryAdjustments.find(adj => adj.salaryId === salary.id);
+          const adjustedAmount = adjustment ? adjustment.amount : salary.amount;
 
+          return {
+            id: `salary_${salary.id}_${year}_${month}`,
+            description: adjustment?.description || salary.company || salary.description,
+            amount: adjustedAmount,
+            originalAmount: salary.amount, // Manter o valor original para comparação
+            category: salary.salaryType === 'salary' ? 'salario' : 'extra',
+            isRecurring: true,
+            isPaid: true,
+            type: 'income',
+            date: dateObj.toISOString(),
+            createdAt: salary.createdAt,
+            isSalary: true,
+            userId: salary.userId,
+          };
+        })
+        .filter((t): t is Transaction => t !== null); // Filtrar os nulos
+
+      // Filtrar transações pelo mês (mostrar todas do mês para visualização)
       const monthTransactions = [...transactions, ...salaryTransactions].filter((t) => {
         const date = new Date(t.date);
         return date.getMonth() === month && date.getFullYear() === year;
@@ -314,8 +353,37 @@ export const FirestoreService = {
         .filter((t) => t.type === "expense")
         .reduce((sum, t) => sum + t.amount, 0);
 
+      // Calcular receitas considerando o dia de recebimento
+      // Só soma receitas que já foram recebidas (dia já passou)
       const totalIncome = monthTransactions
-        .filter((t) => t.type === "income")
+        .filter((t) => {
+          if (t.type !== "income") return false;
+          
+          // Se é salário, já tem a lógica de filtro acima (só aparece se dia passou)
+          if (t.isSalary) return true;
+          
+          // Se tem receivedDate, verificar se o dia já chegou
+          if (t.receivedDate) {
+            const receivedDateObj = new Date(t.receivedDate);
+            const receivedDay = receivedDateObj.getDate();
+            
+            const isCurrentMonth = month === currentMonth && year === currentYear;
+            const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
+            const isFutureMonth = year > currentYear || (year === currentYear && month > currentMonth);
+            
+            // Mês futuro: não somar
+            if (isFutureMonth) return false;
+            
+            // Mês passado: somar
+            if (isPastMonth) return true;
+            
+            // Mês atual: só somar se dia já passou ou é hoje
+            return isCurrentMonth && currentDay >= receivedDay;
+          }
+          
+          // Se não tem receivedDate, soma normalmente
+          return true;
+        })
         .reduce((sum, t) => sum + t.amount, 0);
 
       return {

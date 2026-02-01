@@ -8,6 +8,7 @@ import {
     RefreshControl,
     TextInput,
     Modal,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -23,7 +24,9 @@ export default function SalariesScreen() {
     const [editingSalary, setEditingSalary] = useState<Salary | null>(null);
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
+    const [paymentDay, setPaymentDay] = useState(''); // Dia do mês (01-31)
     const [totalSalaries, setTotalSalaries] = useState(0);
+    const [isSaving, setIsSaving] = useState(false); // Estado de loading ao salvar
 
     const loadSalaries = async () => {
         try {
@@ -52,6 +55,7 @@ export default function SalariesScreen() {
         setEditingSalary(null);
         setDescription('');
         setAmount('');
+        setPaymentDay('');
         setModalVisible(true);
     };
 
@@ -59,10 +63,27 @@ export default function SalariesScreen() {
         setEditingSalary(salary);
         setDescription(salary.description);
         setAmount(salary.amount.toString());
+        // Extrair apenas o dia do paymentDate (formato DD/MM/AAAA)
+        setPaymentDay(salary.paymentDate ? salary.paymentDate.substring(0, 2) : '');
         setModalVisible(true);
     };
 
+    const handleDayChange = (text: string) => {
+        // Aceitar apenas números e limitar a 2 dígitos
+        let v = text.replace(/\D/g, '');
+        if (v.length > 2) v = v.substring(0, 2);
+        // Validar se é um dia válido (1-31)
+        const day = parseInt(v);
+        if (v.length === 2 && (day < 1 || day > 31)) {
+            return; // Não aceitar dias inválidos
+        }
+        setPaymentDay(v);
+    };
+
     const handleSave = async () => {
+        // Evitar múltiplos cliques
+        if (isSaving) return;
+        
         if (!description.trim()) {
             Alert.alert('Erro', 'Por favor, insira uma descrição');
             return;
@@ -73,6 +94,21 @@ export default function SalariesScreen() {
             return;
         }
 
+        // Validar dia de pagamento se informado
+        if (paymentDay.trim()) {
+            const day = parseInt(paymentDay);
+            if (isNaN(day) || day < 1 || day > 31) {
+                Alert.alert('Erro', 'Dia de pagamento deve ser entre 01 e 31');
+                return;
+            }
+        }
+
+        // Formatar dia como DD/MM/AAAA usando formato padrão
+        const formattedPaymentDate = paymentDay.trim() 
+            ? `${paymentDay.padStart(2, '0')}/01/2000`
+            : undefined;
+
+        setIsSaving(true);
         try {
             if (editingSalary) {
                 const numericAmount = parseFloat(amount);
@@ -82,6 +118,7 @@ export default function SalariesScreen() {
                     company: description.trim(),
                     amount: numericAmount,
                     ...(numericAmount !== originalAmount && { originalAmount }),
+                    paymentDate: formattedPaymentDate || null,
                 });
             } else {
                 const newSalary: Omit<Salary, 'userId' | 'groupId'> = {
@@ -93,15 +130,19 @@ export default function SalariesScreen() {
                     salaryType: 'salary',
                     isActive: true,
                     createdAt: new Date().toISOString(),
+                    ...(formattedPaymentDate && { paymentDate: formattedPaymentDate }),
                 };
                 await SalaryFirestoreService.addSalary(newSalary as Salary);
             }
 
-            setModalVisible(false);
             loadSalaries();
-            Alert.alert('Sucesso', editingSalary ? 'Salário atualizado!' : 'Salário adicionado!');
+            Alert.alert('Sucesso', editingSalary ? 'Salário atualizado!' : 'Salário adicionado!', [
+                { text: 'OK', onPress: () => setModalVisible(false) }
+            ]);
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível salvar o salário');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -158,7 +199,7 @@ export default function SalariesScreen() {
                         </Text>
                         {item.paymentDate && (
                             <Text style={[styles.salaryPaymentDate, !item.isActive && styles.inactiveText]}>
-                                Pagamento: {item.paymentDate}
+                                Pagamento: dia {item.paymentDate.substring(0, 2)}
                             </Text>
                         )}
                         <Text style={[styles.salaryAmount, !item.isActive && styles.inactiveText]}>
@@ -267,19 +308,41 @@ export default function SalariesScreen() {
                                 />
                             </View>
 
+                            <View style={styles.inputGroup}>
+                                <Text style={styles.label}>Dia de pagamento</Text>
+                                <TextInput
+                                    style={styles.input}
+                                    placeholder="Ex: 28"
+                                    placeholderTextColor={theme.colors.textMuted}
+                                    value={paymentDay}
+                                    onChangeText={handleDayChange}
+                                    keyboardType="numeric"
+                                    maxLength={2}
+                                />
+                                <Text style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 4 }}>
+                                    Dia do mês em que o salário é recebido (01-31)
+                                </Text>
+                            </View>
+
                             <View style={styles.modalButtons}>
                                 <TouchableOpacity
                                     style={[styles.modalButton, styles.cancelButton]}
                                     onPress={() => setModalVisible(false)}
+                                    disabled={isSaving}
                                 >
                                     <Text style={styles.cancelButtonText}>Cancelar</Text>
                                 </TouchableOpacity>
 
                                 <TouchableOpacity
-                                    style={[styles.modalButton, styles.saveButton]}
+                                    style={[styles.modalButton, styles.saveButton, isSaving && { opacity: 0.7 }]}
                                     onPress={handleSave}
+                                    disabled={isSaving}
                                 >
-                                    <Text style={styles.saveButtonText}>Salvar</Text>
+                                    {isSaving ? (
+                                        <ActivityIndicator size="small" color={theme.colors.white} />
+                                    ) : (
+                                        <Text style={styles.saveButtonText}>Salvar</Text>
+                                    )}
                                 </TouchableOpacity>
                             </View>
 

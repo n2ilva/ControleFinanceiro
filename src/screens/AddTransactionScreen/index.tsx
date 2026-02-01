@@ -8,6 +8,7 @@ import {
     Switch,
     Alert,
     Linking,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { FirestoreService } from '../../services/firestoreService';
@@ -79,6 +80,7 @@ export default function AddTransactionScreen({ navigation, route }: any) {
     const [showAddCardSheet, setShowAddCardSheet] = useState(false);
     const [installments, setInstallments] = useState('1'); // Número de parcelas
     const [isInstallment, setIsInstallment] = useState(false); // Se é parcelado
+    const [isSaving, setIsSaving] = useState(false); // Estado de loading ao salvar
 
     // Aplicar parâmetros pré-selecionados
     useEffect(() => {
@@ -173,6 +175,9 @@ export default function AddTransactionScreen({ navigation, route }: any) {
     };
 
     const handleSave = async () => {
+        // Evitar múltiplos cliques
+        if (isSaving) return;
+        
         // Se não tiver descrição, usar o nome da categoria
         const finalDescription = description.trim() || (
             type === 'expense' 
@@ -222,6 +227,7 @@ export default function AddTransactionScreen({ navigation, route }: any) {
             }
         }
 
+        setIsSaving(true);
         try {
             // Determinar mês e ano base
             let baseYear: number;
@@ -368,6 +374,9 @@ export default function AddTransactionScreen({ navigation, route }: any) {
                 const numMonths = 12 - currentMonth; // Meses restantes até dezembro
                 const recurrenceId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
+                // Usar o dia de recebimento informado pelo usuário
+                const receivedDay = parseInt(receivedDate);
+
                 for (let i = 0; i < numMonths; i++) {
                     const targetMonth = currentDate.getMonth() + i;
                     const targetYear = currentDate.getFullYear() + Math.floor(targetMonth / 12);
@@ -375,8 +384,12 @@ export default function AddTransactionScreen({ navigation, route }: any) {
                     
                     const recurringDate = new Date(targetYear, actualMonth, 1);
                     const lastDayOfMonth = new Date(targetYear, actualMonth + 1, 0).getDate();
-                    const targetDay = Math.min(currentDate.getDate(), lastDayOfMonth);
+                    // Usar o dia de recebimento (não a data atual)
+                    const targetDay = Math.min(receivedDay, lastDayOfMonth);
                     recurringDate.setDate(targetDay);
+
+                    // Criar receivedDateISO para cada mês
+                    const monthReceivedDateISO = recurringDate.toISOString();
 
                     const transaction: Transaction = {
                         id: `${Date.now()}_${i}_${Math.random().toString(36).substring(2, 11)}`,
@@ -391,7 +404,7 @@ export default function AddTransactionScreen({ navigation, route }: any) {
                         userId: auth.currentUser?.uid || '',
                         recurrenceId,
                         originalAmount: numericAmount,
-                        ...(receivedDateISO && { receivedDate: receivedDateISO }),
+                        receivedDate: monthReceivedDateISO,
                     };
 
                     await FirestoreService.addTransaction(transaction);
@@ -429,6 +442,8 @@ export default function AddTransactionScreen({ navigation, route }: any) {
             }
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível adicionar a transação');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -745,15 +760,21 @@ export default function AddTransactionScreen({ navigation, route }: any) {
                     <TouchableOpacity
                         style={[styles.button, styles.cancelButton]}
                         onPress={() => navigation.goBack()}
+                        disabled={isSaving}
                     >
                         <Text style={styles.cancelButtonText}>Cancelar</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.button, styles.saveButton]}
+                        style={[styles.button, styles.saveButton, isSaving && { opacity: 0.7 }]}
                         onPress={handleSave}
+                        disabled={isSaving}
                     >
-                        <Text style={styles.saveButtonText}>Salvar</Text>
+                        {isSaving ? (
+                            <ActivityIndicator size="small" color={theme.colors.white} />
+                        ) : (
+                            <Text style={styles.saveButtonText}>Salvar</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </ScrollView>

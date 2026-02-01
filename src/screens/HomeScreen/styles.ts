@@ -36,15 +36,18 @@ const styles = StyleSheet.create({
     balanceDetails: {
         flexDirection: 'row',
         justifyContent: 'space-between',
+        flexWrap: 'wrap',
         marginTop: theme.spacing.xs,
         paddingTop: theme.spacing.xs,
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
+        gap: theme.spacing.xs,
     },
     balanceItem: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.xs,
+        minWidth: '30%',
     },
     balanceItemText: {
         gap: 2,
@@ -63,7 +66,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.xs,
+        paddingTop: 0,
+        paddingBottom: theme.spacing.xs,
+        marginBottom: theme.spacing.xs,
     },
     monthButton: {
         padding: theme.spacing.sm,

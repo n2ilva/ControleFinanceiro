@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
     View,
     Text,
@@ -6,19 +6,18 @@ import {
     TouchableOpacity,
     Alert,
     RefreshControl,
-    Modal,
-    Pressable,
-    TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { FirestoreService } from '../../services/firestoreService';
 import { Transaction } from '../../types';
 import { theme } from '../../theme';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { formatCurrency } from '../../utils';
 import { CATEGORY_ICONS } from '../../constants';
 import styles from './styles';
+import { MonthSelector, BalanceCard, TransactionFilters, SearchBar, AddMenu } from './components';
+import { PageHeader } from '../../components';
 
 export default function HomeScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
@@ -30,20 +29,31 @@ export default function HomeScreen({ navigation }: any) {
         totalExpenses: 0,
         totalIncome: 0,
         balance: 0,
+        previousBalance: 0, // Saldo do mês anterior
     });
     const [filter, setFilter] = useState<'income' | 'expense' | 'unpaid'>('expense');
-    const [addMenuVisible, setAddMenuVisible] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
     const [showSearch, setShowSearch] = useState(false);
 
     const loadTransactions = async () => {
         try {
             const data = await FirestoreService.getMonthlyData(currentMonth, currentYear);
+            
+            // Calcular saldo do mês anterior
+            let prevMonth = currentMonth - 1;
+            let prevYear = currentYear;
+            if (prevMonth < 0) {
+                prevMonth = 11;
+                prevYear = currentYear - 1;
+            }
+            const prevData = await FirestoreService.getMonthlyData(prevMonth, prevYear);
+            
             setTransactions(data.transactions);
             setMonthlyData({
                 totalExpenses: data.totalExpenses,
                 totalIncome: data.totalIncome,
                 balance: data.balance,
+                previousBalance: prevData.balance,
             });
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível carregar as transações');
@@ -136,19 +146,23 @@ export default function HomeScreen({ navigation }: any) {
                                 {item.type === 'expense' && (
                                     <View style={[
                                         styles.dueDateBadge,
-                                        !item.isPaid && new Date(item.dueDate || item.date) < new Date() && styles.dueDateOverdue
+                                        !item.isPaid && !item.cardId && new Date(item.dueDate || item.date) < new Date() && styles.dueDateOverdue
                                     ]}>
                                         <Ionicons
                                             name="calendar-outline"
                                             size={12}
-                                            color={!item.isPaid && new Date(item.dueDate || item.date) < new Date() ? theme.colors.danger : theme.colors.textSecondary}
+                                            color={!item.isPaid && !item.cardId && new Date(item.dueDate || item.date) < new Date() ? theme.colors.danger : theme.colors.textSecondary}
                                         />
                                         <Text style={[
                                             styles.dueDateText,
                                             { color: theme.colors.textSecondary },
-                                            !item.isPaid && new Date(item.dueDate || item.date) < new Date() && styles.dueDateOverdueText
+                                            !item.isPaid && !item.cardId && new Date(item.dueDate || item.date) < new Date() && styles.dueDateOverdueText
                                         ]}>
-                                            {new Date(item.dueDate || item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}
+                                            {/* Para transações de cartão, mostrar a data da compra (item.date), não o vencimento */}
+                                            {item.cardId 
+                                                ? new Date(item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                                                : new Date(item.dueDate || item.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                                            }
                                         </Text>
                                     </View>
                                 )}
@@ -169,14 +183,43 @@ export default function HomeScreen({ navigation }: any) {
                                         </Text>
                                     </View>
                                 )}
-                                {item.type === 'income' && !item.isSalary && item.receivedDate && (
-                                    <View style={styles.salaryDateBadge}>
-                                        <Ionicons name="calendar-outline" size={12} color={theme.colors.success} />
-                                        <Text style={[styles.salaryDateText, { color: theme.colors.success }]}>
-                                            Recebido: {new Date(item.receivedDate).toLocaleDateString('pt-BR')}
-                                        </Text>
-                                    </View>
-                                )}
+                                {item.type === 'income' && !item.isSalary && item.receivedDate && (() => {
+                                    const receivedDateObj = new Date(item.receivedDate);
+                                    const receivedDay = receivedDateObj.getDate();
+                                    const today = new Date();
+                                    const currentDay = today.getDate();
+                                    const currentMonthNow = today.getMonth();
+                                    const currentYearNow = today.getFullYear();
+                                    
+                                    const transactionDate = new Date(item.date);
+                                    const transactionMonth = transactionDate.getMonth();
+                                    const transactionYear = transactionDate.getFullYear();
+                                    
+                                    const isCurrentMonth = transactionMonth === currentMonthNow && transactionYear === currentYearNow;
+                                    const isPastMonth = transactionYear < currentYearNow || (transactionYear === currentYearNow && transactionMonth < currentMonthNow);
+                                    
+                                    // Já recebeu se é mês passado ou se o dia já passou/é hoje
+                                    const isReceived = isPastMonth || (isCurrentMonth && currentDay >= receivedDay);
+                                    
+                                    return (
+                                        <View style={[styles.salaryDateBadge, !isReceived && { backgroundColor: theme.colors.warning + '20' }]}>
+                                            <Ionicons 
+                                                name={isReceived ? "checkmark-circle-outline" : "time-outline"} 
+                                                size={12} 
+                                                color={isReceived ? theme.colors.success : theme.colors.warning} 
+                                            />
+                                            <Text style={[
+                                                styles.salaryDateText, 
+                                                { color: isReceived ? theme.colors.success : theme.colors.warning }
+                                            ]}>
+                                                {isReceived 
+                                                    ? `Recebido: ${receivedDateObj.toLocaleDateString('pt-BR')}`
+                                                    : `Pendente: dia ${receivedDay.toString().padStart(2, '0')}`
+                                                }
+                                            </Text>
+                                        </View>
+                                    );
+                                })()}
                             </View>
                         </View>
 
@@ -278,112 +321,51 @@ export default function HomeScreen({ navigation }: any) {
     const unpaidCount = transactions.filter(t => t.type === 'expense' && !t.isPaid).length;
     const unpaidTotal = transactions.filter(t => t.type === 'expense' && !t.isPaid).reduce((sum, t) => sum + t.amount, 0);
 
+    // Saldo total considerando o mês anterior
+    const totalBalance = monthlyData.balance + monthlyData.previousBalance;
+
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            <View style={styles.header}>
-                <View style={styles.balanceCard}>
-                    <Text style={styles.balanceLabel}>Saldo do Mês</Text>
-                    <Text style={[styles.balanceAmount, monthlyData.balance >= 0 ? styles.positiveBalance : styles.negativeBalance]}>
-                        R$ {formatCurrency(monthlyData.balance)}
-                    </Text>
+            {/* Título da página */}
+            <PageHeader
+                title="Transações"
+                onGroupPress={() => navigation.navigate('Group')}
+            />
 
-                    <View style={styles.balanceDetails}>
-                        <View style={styles.balanceItem}>
-                            <Ionicons name="arrow-down-circle" size={16} color={theme.colors.success} />
-                            <View style={styles.balanceItemText}>
-                                <Text style={styles.balanceItemLabel}>Receitas</Text>
-                                <Text style={styles.balanceItemValue}>R$ {formatCurrency(monthlyData.totalIncome)}</Text>
-                            </View>
-                        </View>
+            {/* Seletor de mês */}
+            <MonthSelector
+                monthName={monthName}
+                year={currentYear}
+                showSearch={showSearch}
+                onPrevMonth={() => changeMonth('prev')}
+                onNextMonth={() => changeMonth('next')}
+                onToggleSearch={() => setShowSearch(!showSearch)}
+            />
 
-                        <View style={styles.balanceItem}>
-                            <Ionicons name="arrow-up-circle" size={16} color={theme.colors.danger} />
-                            <View style={styles.balanceItemText}>
-                                <Text style={styles.balanceItemLabel}>Despesas</Text>
-                                <Text style={styles.balanceItemValue}>R$ {formatCurrency(monthlyData.totalExpenses)}</Text>
-                            </View>
-                        </View>
-                    </View>
-                </View>
-            </View>
-
-            <View style={styles.monthSelector}>
-                <TouchableOpacity onPress={() => changeMonth('prev')} style={styles.monthButton}>
-                    <Ionicons name="chevron-back" size={24} color={theme.colors.primary} />
-                </TouchableOpacity>
-
-                <Text style={styles.monthText}>
-                    {monthName.charAt(0).toUpperCase() + monthName.slice(1)} {currentYear}
-                </Text>
-
-                <View style={styles.monthActions}>
-                    <TouchableOpacity 
-                        onPress={() => setShowSearch(!showSearch)} 
-                        style={styles.searchToggleButton}
-                    >
-                        <Ionicons 
-                            name={showSearch ? "close" : "search"} 
-                            size={20} 
-                            color={showSearch ? theme.colors.danger : theme.colors.primary} 
-                        />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => changeMonth('next')} style={styles.monthButton}>
-                        <Ionicons name="chevron-forward" size={24} color={theme.colors.primary} />
-                    </TouchableOpacity>
-                </View>
-            </View>
-
+            {/* Barra de pesquisa */}
             {showSearch && (
-                <View style={styles.searchContainer}>
-                    <View style={styles.searchInputContainer}>
-                        <Ionicons name="search" size={18} color={theme.colors.textMuted} />
-                        <TextInput
-                            style={styles.searchInput}
-                            placeholder="Buscar por descrição, categoria, cartão..."
-                            placeholderTextColor={theme.colors.textMuted}
-                            value={searchQuery}
-                            onChangeText={setSearchQuery}
-                            autoFocus
-                        />
-                        {searchQuery.length > 0 && (
-                            <TouchableOpacity onPress={() => setSearchQuery('')}>
-                                <Ionicons name="close-circle" size={18} color={theme.colors.textMuted} />
-                            </TouchableOpacity>
-                        )}
-                    </View>
-                    {searchQuery.trim() && (
-                        <Text style={styles.searchResultCount}>
-                            {filteredTransactions.length} resultado(s) encontrado(s)
-                        </Text>
-                    )}
-                </View>
+                <SearchBar
+                    searchQuery={searchQuery}
+                    resultCount={filteredTransactions.length}
+                    onSearchChange={setSearchQuery}
+                    onClear={() => setSearchQuery('')}
+                />
             )}
 
-            <View style={styles.filterContainer}>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'expense' && styles.filterButtonActive]}
-                    onPress={() => setFilter('expense')}
-                >
-                    <Ionicons name="arrow-up-circle" size={16} color={filter === 'expense' ? theme.colors.white : theme.colors.danger} />
-                    <Text style={[styles.filterText, filter === 'expense' && styles.filterTextActive]}>Despesas</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'unpaid' && styles.filterButtonActive, unpaidCount > 0 && styles.filterButtonWarning]}
-                    onPress={() => setFilter('unpaid')}
-                >
-                    <Ionicons name="alert-circle" size={16} color={filter === 'unpaid' ? theme.colors.white : theme.colors.warning} />
-                    <Text style={[styles.filterText, filter === 'unpaid' && styles.filterTextActive]}>
-                        Não Pagas {unpaidCount > 0 && `(${unpaidCount})`}
-                    </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                    style={[styles.filterButton, filter === 'income' && styles.filterButtonActive]}
-                    onPress={() => setFilter('income')}
-                >
-                    <Ionicons name="arrow-down-circle" size={16} color={filter === 'income' ? theme.colors.white : theme.colors.success} />
-                    <Text style={[styles.filterText, filter === 'income' && styles.filterTextActive]}>Receitas</Text>
-                </TouchableOpacity>
-            </View>
+            {/* Card de saldo */}
+            <BalanceCard
+                totalBalance={totalBalance}
+                previousBalance={monthlyData.previousBalance}
+                totalIncome={monthlyData.totalIncome}
+                totalExpenses={monthlyData.totalExpenses}
+            />
+
+            {/* Filtros de transação */}
+            <TransactionFilters
+                filter={filter}
+                unpaidCount={unpaidCount}
+                onFilterChange={setFilter}
+            />
 
             <FlatList
                 data={filteredTransactions}
@@ -402,47 +384,12 @@ export default function HomeScreen({ navigation }: any) {
                 }
             />
 
-            <TouchableOpacity
-                style={[styles.fab, { bottom: insets.bottom }]}
-                onPress={() => setAddMenuVisible(true)}
-            >
-                <Ionicons name="add" size={32} color={theme.colors.white} />
-            </TouchableOpacity>
-
-            <Modal
-                visible={addMenuVisible}
-                transparent
-                animationType="fade"
-                onRequestClose={() => setAddMenuVisible(false)}
-            >
-                <Pressable style={styles.menuOverlay} onPress={() => setAddMenuVisible(false)}>
-                    <View style={[styles.menuContainer, { paddingBottom: 20 + insets.bottom }]}>
-                        <Text style={styles.menuTitle}>Adicionar</Text>
-
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={() => {
-                                setAddMenuVisible(false);
-                                navigation.navigate('AddExpense', { month: currentMonth, year: currentYear });
-                            }}
-                        >
-                            <Ionicons name="arrow-up-circle" size={20} color={theme.colors.danger} />
-                            <Text style={styles.menuItemText}>Despesas</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={() => {
-                                setAddMenuVisible(false);
-                                navigation.navigate('AddIncome', { month: currentMonth, year: currentYear });
-                            }}
-                        >
-                            <Ionicons name="arrow-down-circle" size={20} color={theme.colors.success} />
-                            <Text style={styles.menuItemText}>Receitas</Text>
-                        </TouchableOpacity>
-                    </View>
-                </Pressable>
-            </Modal>
+            {/* Menu de adicionar */}
+            <AddMenu
+                bottomInset={insets.bottom}
+                onAddExpense={() => navigation.navigate('AddExpense', { month: currentMonth, year: currentYear })}
+                onAddIncome={() => navigation.navigate('AddIncome', { month: currentMonth, year: currentYear })}
+            />
         </View>
     );
 }

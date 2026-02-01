@@ -40,11 +40,20 @@ export const SalaryFirestoreService = {
       const user = AuthService.getCurrentUser();
       if (!user) throw new Error('Usuário não autenticado');
 
-      const docRef = await addDoc(this.getSalariesCollection(), {
-        ...salary,
+      const salaryData = {
+        description: salary.description,
+        amount: salary.amount,
+        isActive: salary.isActive,
         userId: user.uid,
         createdAt: Timestamp.now(),
-      });
+        ...(salary.company && { company: salary.company }),
+        ...(salary.salaryType && { salaryType: salary.salaryType }),
+        ...(salary.originalAmount !== undefined && { originalAmount: salary.originalAmount }),
+        ...(salary.paymentDate && { paymentDate: salary.paymentDate }),
+        ...(salary.groupId && { groupId: salary.groupId }),
+      };
+
+      const docRef = await addDoc(this.getSalariesCollection(), salaryData);
 
       return docRef.id;
     } catch (error) {

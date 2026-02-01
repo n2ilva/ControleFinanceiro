@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { CreditCard, Transaction } from '../../types';
@@ -42,6 +43,7 @@ export default function EditTransactionScreen({ route, navigation }: any) {
         }
         return '';
     });
+    const [isSaving, setIsSaving] = useState(false); // Estado de loading ao salvar
 
     const loadCards = async () => {
         try {
@@ -88,17 +90,17 @@ export default function EditTransactionScreen({ route, navigation }: any) {
     };
 
     const handleReceivedDateChange = (text: string) => {
-        let v = text.replace(/\D/g, '');
-        if (v.length > 8) v = v.substring(0, 8);
-        if (v.length > 4) {
-            v = v.replace(/^(\d{2})(\d{2})(\d{0,4})/, '$1/$2/$3');
-        } else if (v.length > 2) {
-            v = v.replace(/^(\d{2})(\d{0,2})/, '$1/$2');
+        // Aceitar apenas números e limitar a 2 dígitos (dia do mês)
+        const v = text.replace(/\D/g, '');
+        if (v.length <= 2) {
+            setReceivedDate(v);
         }
-        setReceivedDate(v);
     };
 
     const handleSave = async () => {
+        // Evitar múltiplos cliques
+        if (isSaving) return;
+        
         if (!description.trim()) {
             Alert.alert('Erro', 'Por favor, insira uma descrição');
             return;
@@ -111,6 +113,7 @@ export default function EditTransactionScreen({ route, navigation }: any) {
             return;
         }
 
+        setIsSaving(true);
         try {
             let dueDateISO = undefined;
             let receivedDateISO = undefined;
@@ -118,6 +121,7 @@ export default function EditTransactionScreen({ route, navigation }: any) {
             if (transaction.type === 'expense' && dueDate) {
                 const day = parseInt(dueDate);
                 if (isNaN(day) || day < 1 || day > 31 || dueDate.length !== 2) {
+                    setIsSaving(false);
                     Alert.alert('Erro', 'Dia de vencimento deve ter 2 dígitos (Ex: 01, 15, 30)');
                     return;
                 }
@@ -134,19 +138,25 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                 dueDateISO = dateObj.toISOString();
             }
 
-            // Parse da data de recebimento para receitas
+            // Parse da data de recebimento para receitas (apenas dia)
             if (transaction.type === 'income' && receivedDate) {
-                const parts = receivedDate.split('/');
-                if (parts.length === 3) {
-                    const day = parseInt(parts[0]);
-                    const month = parseInt(parts[1]) - 1;
-                    const year = parseInt(parts[2]);
-                    if (year > 2000 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
-                        const dateObj = new Date(year, month, day);
-                        dateObj.setHours(12, 0, 0, 0);
-                        receivedDateISO = dateObj.toISOString();
-                    }
+                const day = parseInt(receivedDate);
+                if (isNaN(day) || day < 1 || day > 31 || receivedDate.length !== 2) {
+                    setIsSaving(false);
+                    Alert.alert('Erro', 'Dia de recebimento deve ter 2 dígitos (Ex: 01, 15, 28)');
+                    return;
                 }
+                
+                // Usar mês e ano da transação original
+                const originalDate = new Date(transaction.date);
+                const year = originalDate.getFullYear();
+                const month = originalDate.getMonth();
+                const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+                const safeDay = Math.min(day, lastDayOfMonth);
+                
+                const dateObj = new Date(year, month, safeDay);
+                dateObj.setHours(12, 0, 0, 0);
+                receivedDateISO = dateObj.toISOString();
             }
 
             // Verificar se é um salário (ID começa com 'salary_')
@@ -186,6 +196,8 @@ export default function EditTransactionScreen({ route, navigation }: any) {
         } catch (error) {
             console.error('Error updating transaction:', error);
             Alert.alert('Erro', 'Não foi possível atualizar a transação');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -357,15 +369,15 @@ export default function EditTransactionScreen({ route, navigation }: any) {
 
                     {transaction.type === 'income' && (
                         <View style={styles.flex1}>
-                            <Text style={styles.label}>Data</Text>
+                            <Text style={styles.label}>Dia Receb.</Text>
                             <TextInput
                                 style={styles.input}
-                                placeholder="DD/MM/AA"
+                                placeholder="Ex: 28"
                                 placeholderTextColor={theme.colors.textMuted}
                                 value={receivedDate}
                                 onChangeText={handleReceivedDateChange}
                                 keyboardType="numeric"
-                                maxLength={10}
+                                maxLength={2}
                             />
                         </View>
                     )}
@@ -476,15 +488,21 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                     <TouchableOpacity
                         style={[styles.button, styles.cancelButton]}
                         onPress={() => navigation.goBack()}
+                        disabled={isSaving}
                     >
                         <Text style={styles.cancelButtonText}>Cancelar</Text>
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.button, styles.saveButton]}
+                        style={[styles.button, styles.saveButton, isSaving && { opacity: 0.7 }]}
                         onPress={handleSave}
+                        disabled={isSaving}
                     >
-                        <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+                        {isSaving ? (
+                            <ActivityIndicator size="small" color={theme.colors.white} />
+                        ) : (
+                            <Text style={styles.saveButtonText}>Salvar Alterações</Text>
+                        )}
                     </TouchableOpacity>
                 </View>
             </ScrollView>

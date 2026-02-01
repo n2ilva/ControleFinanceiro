@@ -6,6 +6,7 @@ import {
     TouchableOpacity,
     ScrollView,
     Alert,
+    ActivityIndicator,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,7 +27,8 @@ export default function AddSalaryScreen({ navigation }: any) {
     const [company, setCompany] = useState('');
     const [amount, setAmount] = useState('');
     const [salaryType, setSalaryType] = useState<Salary['salaryType']>('salary');
-    const [paymentDate, setPaymentDate] = useState('');
+    const [paymentDay, setPaymentDay] = useState(''); // Dia do mês (01-31)
+    const [isSaving, setIsSaving] = useState(false); // Estado de loading ao salvar
 
     const formatCurrency = (value: string) => {
         const cleanValue = value.replace(/\D/g, '');
@@ -43,18 +45,22 @@ export default function AddSalaryScreen({ navigation }: any) {
         setAmount(cleanText);
     };
 
-    const handleDateChange = (text: string) => {
+    const handleDayChange = (text: string) => {
+        // Aceitar apenas números e limitar a 2 dígitos
         let v = text.replace(/\D/g, '');
-        if (v.length > 8) v = v.substring(0, 8);
-        if (v.length > 4) {
-            v = v.replace(/^(\d{2})(\d{2})(\d{0,4})/, '$1/$2/$3');
-        } else if (v.length > 2) {
-            v = v.replace(/^(\d{2})(\d{0,2})/, '$1/$2');
+        if (v.length > 2) v = v.substring(0, 2);
+        // Validar se é um dia válido (1-31)
+        const day = parseInt(v);
+        if (v.length === 2 && (day < 1 || day > 31)) {
+            return; // Não aceitar dias inválidos
         }
-        setPaymentDate(v);
+        setPaymentDay(v);
     };
 
     const handleSave = async () => {
+        // Evitar múltiplos cliques
+        if (isSaving) return;
+        
         if (!company.trim()) {
             Alert.alert('Erro', 'Por favor, informe a empresa');
             return;
@@ -66,7 +72,23 @@ export default function AddSalaryScreen({ navigation }: any) {
             return;
         }
 
+        // Validar dia de pagamento se informado
+        if (paymentDay.trim()) {
+            const day = parseInt(paymentDay);
+            if (isNaN(day) || day < 1 || day > 31) {
+                Alert.alert('Erro', 'Dia de pagamento deve ser entre 01 e 31');
+                return;
+            }
+        }
+
+        setIsSaving(true);
         try {
+            // Formatar dia como DD/MM/AAAA usando formato padrão
+            // O sistema vai usar apenas o dia para calcular quando mostrar o salário
+            const formattedPaymentDate = paymentDay.trim() 
+                ? `${paymentDay.padStart(2, '0')}/01/2000`  // Formato padrão para extrair o dia
+                : undefined;
+
             const newSalary: Salary = {
                 id: `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
                 description: company.trim(),
@@ -76,7 +98,7 @@ export default function AddSalaryScreen({ navigation }: any) {
                 salaryType,
                 isActive: true,
                 createdAt: new Date().toISOString(),
-                ...(paymentDate.trim() && { paymentDate: paymentDate.trim() }),
+                ...(formattedPaymentDate && { paymentDate: formattedPaymentDate }),
                 userId: auth.currentUser?.uid || '',
             };
 
@@ -86,6 +108,8 @@ export default function AddSalaryScreen({ navigation }: any) {
             ]);
         } catch (error) {
             Alert.alert('Erro', 'Não foi possível salvar o salário');
+        } finally {
+            setIsSaving(false);
         }
     };
 
@@ -145,31 +169,40 @@ export default function AddSalaryScreen({ navigation }: any) {
             </View>
 
             <View style={styles.section}>
-                <Text style={styles.label}>Data de pagamento (opcional)</Text>
+                <Text style={styles.label}>Dia de pagamento</Text>
                 <TextInput
                     style={styles.input}
-                    placeholder="DD/MM/AAAA"
+                    placeholder="Ex: 28"
                     placeholderTextColor={theme.colors.textMuted}
-                    value={paymentDate}
-                    onChangeText={handleDateChange}
+                    value={paymentDay}
+                    onChangeText={handleDayChange}
                     keyboardType="numeric"
-                    maxLength={10}
+                    maxLength={2}
                 />
+                <Text style={{ fontSize: 12, color: theme.colors.textMuted, marginTop: 4 }}>
+                    Informe o dia do mês em que o salário é recebido (01-31)
+                </Text>
             </View>
 
                 <View style={styles.buttonContainer}>
                 <TouchableOpacity
                     style={[styles.button, styles.cancelButton]}
                     onPress={() => navigation.goBack()}
+                    disabled={isSaving}
                 >
                     <Text style={styles.cancelButtonText}>Cancelar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                    style={[styles.button, styles.saveButton]}
+                    style={[styles.button, styles.saveButton, isSaving && { opacity: 0.7 }]}
                     onPress={handleSave}
+                    disabled={isSaving}
                 >
-                    <Text style={styles.saveButtonText}>Salvar</Text>
+                    {isSaving ? (
+                        <ActivityIndicator size="small" color={theme.colors.white} />
+                    ) : (
+                        <Text style={styles.saveButtonText}>Salvar</Text>
+                    )}
                 </TouchableOpacity>
             </View>
             </ScrollView>

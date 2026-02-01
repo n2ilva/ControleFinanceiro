@@ -68,7 +68,7 @@ function HomeTabs() {
                 name="Home"
                 component={HomeScreen}
                 options={{
-                    title: 'Transações',
+                    headerShown: false,
                     tabBarLabel: 'Início',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="wallet" size={size} color={color} />
@@ -79,7 +79,7 @@ function HomeTabs() {
                 name="CreditCards"
                 component={CreditCardsScreen}
                 options={{
-                    title: 'Cartões',
+                    headerShown: false,
                     tabBarLabel: 'Cartões',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="card" size={size} color={color} />
@@ -90,7 +90,7 @@ function HomeTabs() {
                 name="Charts"
                 component={ChartsScreen}
                 options={{
-                    title: 'Gráficos',
+                    headerShown: false,
                     tabBarLabel: 'Análises',
                     tabBarIcon: ({ color, size }) => (
                         <Ionicons name="stats-chart" size={size} color={color} />

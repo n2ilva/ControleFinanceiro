@@ -18,6 +18,7 @@ import { theme } from '../../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styles from './styles';
 import { additionalStyles } from './additionalStyles';
+import { PageHeader } from '../../components';
 
 const allStyles = { ...styles, ...additionalStyles };
 
@@ -143,7 +144,7 @@ const CATEGORY_ICONS: { [key: string]: string } = {
     outros: 'ellipsis-horizontal',
 };
 
-export default function ChartsScreen() {
+export default function ChartsScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
     const [loading, setLoading] = useState(true);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
@@ -1536,6 +1537,12 @@ export default function ChartsScreen() {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
+            {/* Título da página */}
+            <PageHeader
+                title="Gráficos"
+                onGroupPress={() => navigation.navigate('Group')}
+            />
+
             <ScrollView contentContainerStyle={[styles.content, { paddingBottom: 80 + insets.bottom }]}>
                 {/* Seletor de mês */}
                 <View style={styles.monthSelector}>

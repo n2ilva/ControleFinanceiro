@@ -11,11 +11,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CreditCardFirestoreService } from '../../services/creditCardFirestoreService';
 import { CreditCard } from '../../types';
 import { FirestoreService } from '../../services/firestoreService';
 import { theme } from '../../theme';
 import styles from './styles';
+import { PageHeader } from '../../components';
 
 interface CardWithAmount extends CreditCard {
     currentMonthAmount: number;
@@ -23,6 +25,7 @@ interface CardWithAmount extends CreditCard {
 }
 
 export default function CreditCardsScreen({ navigation }: any) {
+    const insets = useSafeAreaInsets();
     const [cards, setCards] = useState<CardWithAmount[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -32,6 +35,8 @@ export default function CreditCardsScreen({ navigation }: any) {
     const [cardType, setCardType] = useState<'debit' | 'credit'>('credit');
     const [filter, setFilter] = useState<'all' | 'credit' | 'debit'>('all');
 
+    // FAB bottom: insets.bottom + 60 (altura do tab bar) + 2 (gap)
+    const fabBottom = insets.bottom + 5;
     const loadCards = async () => {
         try {
             const data = await CreditCardFirestoreService.getCreditCards();
@@ -282,7 +287,13 @@ export default function CreditCardsScreen({ navigation }: any) {
     });
 
     return (
-        <View style={styles.container}>
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+            {/* Título da página */}
+            <PageHeader
+                title="Cartões"
+                onGroupPress={() => navigation.navigate('Group')}
+            />
+
             {/* Filtros */}
             <View style={styles.filterContainer}>
                 <TouchableOpacity
@@ -338,7 +349,7 @@ export default function CreditCardsScreen({ navigation }: any) {
                 }
             />
 
-            <TouchableOpacity style={styles.fab} onPress={openAddModal}>
+            <TouchableOpacity style={[styles.fab, { bottom: fabBottom }]} onPress={openAddModal}>
                 <Ionicons name="add" size={32} color={theme.colors.white} />
             </TouchableOpacity>
 
