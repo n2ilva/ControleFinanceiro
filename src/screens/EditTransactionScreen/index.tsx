@@ -22,16 +22,26 @@ export default function EditTransactionScreen({ route, navigation }: any) {
 
     const [description, setDescription] = useState(transaction.description);
     const [amount, setAmount] = useState((transaction.amount * 100).toFixed(0));
-    const [dueDate, setDueDate] = useState<string>(
-        transaction.dueDate ? new Date(transaction.dueDate).toLocaleDateString('pt-BR') : ''
-    );
+    const [dueDate, setDueDate] = useState<string>(() => {
+        if (transaction.dueDate) {
+            const date = new Date(transaction.dueDate);
+            const day = date.getDate();
+            return day.toString().padStart(2, '0');
+        }
+        return '';
+    });
     const [cards, setCards] = useState<CreditCard[]>([]);
     const [selectedCardId, setSelectedCardId] = useState<string | null>(transaction.cardId ?? null);
     const [selectedCardName, setSelectedCardName] = useState<string | null>(transaction.cardName ?? null);
     const [selectedCardType, setSelectedCardType] = useState<'debit' | 'credit' | null>(transaction.cardType ?? null);
-    const [receivedDate, setReceivedDate] = useState<string>(
-        transaction.receivedDate ? new Date(transaction.receivedDate).toLocaleDateString('pt-BR') : ''
-    );
+    const [receivedDate, setReceivedDate] = useState<string>(() => {
+        if (transaction.receivedDate) {
+            const date = new Date(transaction.receivedDate);
+            const day = date.getDate();
+            return day.toString().padStart(2, '0');
+        }
+        return '';
+    });
 
     const loadCards = async () => {
         try {
@@ -71,14 +81,10 @@ export default function EditTransactionScreen({ route, navigation }: any) {
     };
 
     const handleDateChange = (text: string) => {
-        let v = text.replace(/\D/g, '');
-        if (v.length > 8) v = v.substring(0, 8);
-        if (v.length > 4) {
-            v = v.replace(/^(\d{2})(\d{2})(\d{0,4})/, '$1/$2/$3');
-        } else if (v.length > 2) {
-            v = v.replace(/^(\d{2})(\d{0,2})/, '$1/$2');
+        const v = text.replace(/\D/g, '');
+        if (v.length <= 2) {
+            setDueDate(v);
         }
-        setDueDate(v);
     };
 
     const handleReceivedDateChange = (text: string) => {
@@ -110,20 +116,22 @@ export default function EditTransactionScreen({ route, navigation }: any) {
             let receivedDateISO = undefined;
             
             if (transaction.type === 'expense' && dueDate) {
-                const parts = dueDate.split('/');
-                if (parts.length === 3) {
-                    const day = parseInt(parts[0]);
-                    const month = parseInt(parts[1]) - 1;
-                    const year = parseInt(parts[2]);
-                    if (year > 2000 && month >= 0 && month <= 11 && day >= 1 && day <= 31) {
-                        const dateObj = new Date(year, month, day);
-                        dateObj.setHours(12, 0, 0, 0);
-                        dueDateISO = dateObj.toISOString();
-                    } else {
-                        Alert.alert('Erro', 'Data de vencimento inválida');
-                        return;
-                    }
+                const day = parseInt(dueDate);
+                if (isNaN(day) || day < 1 || day > 31 || dueDate.length !== 2) {
+                    Alert.alert('Erro', 'Dia de vencimento deve ter 2 dígitos (Ex: 01, 15, 30)');
+                    return;
                 }
+                
+                // Usar mês e ano da transação original
+                const originalDate = new Date(transaction.date);
+                const year = originalDate.getFullYear();
+                const month = originalDate.getMonth();
+                const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+                const safeDay = Math.min(day, lastDayOfMonth);
+                
+                const dateObj = new Date(year, month, safeDay);
+                dateObj.setHours(12, 0, 0, 0);
+                dueDateISO = dateObj.toISOString();
             }
 
             // Parse da data de recebimento para receitas
@@ -161,14 +169,14 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                 await FirestoreService.updateTransaction(transaction.id, {
                     description: description.trim(),
                     amount: numericAmount,
-                    ...(transaction.type === 'expense' && { dueDate: dueDateISO || null }),
+                    ...(transaction.type === 'expense' && { dueDate: dueDateISO || undefined }),
                     ...(transaction.type === 'expense'
                         ? selectedCardId
                             ? { cardId: selectedCardId, cardName: selectedCardName, cardType: selectedCardType }
-                            : { cardId: null, cardName: null, cardType: null }
-                        : { cardId: null, cardName: null, cardType: null }
+                            : { cardId: undefined, cardName: undefined, cardType: undefined }
+                        : { cardId: undefined, cardName: undefined, cardType: undefined }
                     ),
-                    ...(transaction.type === 'income' && { receivedDate: receivedDateISO || null }),
+                    ...(transaction.type === 'income' && { receivedDate: receivedDateISO || undefined }),
                 });
             }
 
@@ -183,33 +191,132 @@ export default function EditTransactionScreen({ route, navigation }: any) {
 
     const handleDelete = () => {
         const isSalary = transaction.isSalary && transaction.id.startsWith('salary_');
+        const isRecurringWithId = transaction.isRecurring && transaction.recurrenceId;
         
-        Alert.alert(
-            'Excluir',
-            isSalary 
-                ? 'Deseja excluir este salário permanentemente? Isso removerá o salário de todos os meses.'
-                : 'Tem certeza que deseja excluir esta transação?',
-            [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                    text: 'Excluir',
-                    style: 'destructive',
-                    onPress: async () => {
-                        try {
-                            if (isSalary) {
-                                // Extrair o ID real do salário: salary_{salaryId}_{year}_{month}
+        if (isSalary) {
+            Alert.alert(
+                'Excluir',
+                'Deseja excluir este salário permanentemente? Isso removerá o salário de todos os meses.',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Excluir',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
                                 const parts = transaction.id.split('_');
                                 const salaryId = parts[1];
                                 await SalaryFirestoreService.deleteSalary(salaryId);
-                            } else {
-                                await FirestoreService.deleteTransaction(transaction.id);
+                                Alert.alert('Sucesso', 'Excluído com sucesso!', [
+                                    { text: 'OK', onPress: () => navigation.goBack() },
+                                ]);
+                            } catch (error) {
+                                console.error('Error deleting:', error);
+                                Alert.alert('Erro', 'Não foi possível excluir');
                             }
-                            Alert.alert('Sucesso', 'Excluído com sucesso!', [
-                                { text: 'OK', onPress: () => navigation.goBack() },
-                            ]);
+                        },
+                    },
+                ]
+            );
+        } else if (isRecurringWithId) {
+            // Transação recorrente - dar opções
+            Alert.alert(
+                'Excluir Transação Recorrente',
+                'Como deseja excluir esta transação?',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Apenas esta',
+                        onPress: async () => {
+                            try {
+                                await FirestoreService.deleteTransaction(transaction.id);
+                                Alert.alert('Sucesso', 'Transação excluída!', [
+                                    { text: 'OK', onPress: () => navigation.goBack() },
+                                ]);
+                            } catch (error) {
+                                console.error('Error deleting:', error);
+                                Alert.alert('Erro', 'Não foi possível excluir');
+                            }
+                        },
+                    },
+                    {
+                        text: 'Esta e próximas',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                const deletedCount = await FirestoreService.deleteRecurrenceFromDate(
+                                    transaction.recurrenceId!,
+                                    transaction.date
+                                );
+                                Alert.alert(
+                                    'Sucesso',
+                                    `${deletedCount} transação(ões) excluída(s)!`,
+                                    [{ text: 'OK', onPress: () => navigation.goBack() }]
+                                );
+                            } catch (error) {
+                                console.error('Error deleting recurrence:', error);
+                                Alert.alert('Erro', 'Não foi possível excluir');
+                            }
+                        },
+                    },
+                ]
+            );
+        } else {
+            // Transação não recorrente - comportamento padrão
+            Alert.alert(
+                'Excluir',
+                'Tem certeza que deseja excluir esta transação?',
+                [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                        text: 'Excluir',
+                        style: 'destructive',
+                        onPress: async () => {
+                            try {
+                                await FirestoreService.deleteTransaction(transaction.id);
+                                Alert.alert('Sucesso', 'Excluído com sucesso!', [
+                                    { text: 'OK', onPress: () => navigation.goBack() },
+                                ]);
+                            } catch (error) {
+                                console.error('Error deleting:', error);
+                                Alert.alert('Erro', 'Não foi possível excluir');
+                            }
+                        },
+                    },
+                ]
+            );
+        }
+    };
+
+    const handleCancelRecurrence = () => {
+        if (!transaction.recurrenceId) {
+            Alert.alert('Aviso', 'Esta transação não possui recorrência vinculada.');
+            return;
+        }
+
+        Alert.alert(
+            'Cancelar Recorrência',
+            'Deseja cancelar a recorrência desta despesa? Isso irá:\n\n• Manter esta transação\n• Remover todas as transações dos meses seguintes\n• Desativar a recorrência',
+            [
+                { text: 'Não', style: 'cancel' },
+                {
+                    text: 'Sim, cancelar',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            const deletedCount = await FirestoreService.cancelRecurrence(
+                                transaction.id,
+                                transaction.recurrenceId!,
+                                transaction.date
+                            );
+                            Alert.alert(
+                                'Sucesso',
+                                `Recorrência cancelada!\n${deletedCount} transação(ões) futura(s) removida(s).`,
+                                [{ text: 'OK', onPress: () => navigation.goBack() }]
+                            );
                         } catch (error) {
-                            console.error('Error deleting:', error);
-                            Alert.alert('Erro', 'Não foi possível excluir');
+                            console.error('Error canceling recurrence:', error);
+                            Alert.alert('Erro', 'Não foi possível cancelar a recorrência');
                         }
                     },
                 },
@@ -234,47 +341,50 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                     />
                 </View>
 
-                <View style={styles.section}>
-                    <Text style={styles.label}>Valor</Text>
-                    <TextInput
-                        style={styles.input}
-                        placeholder="R$ 0,00"
-                        placeholderTextColor={theme.colors.textMuted}
-                        value={formatCurrency(amount)}
-                        onChangeText={handleAmountChange}
-                        keyboardType="numeric"
-                    />
+                {/* Valor e Data na mesma linha */}
+                <View style={styles.row}>
+                    <View style={styles.flex2}>
+                        <Text style={styles.label}>Valor</Text>
+                        <TextInput
+                            style={styles.input}
+                            placeholder="R$ 0,00"
+                            placeholderTextColor={theme.colors.textMuted}
+                            value={formatCurrency(amount)}
+                            onChangeText={handleAmountChange}
+                            keyboardType="numeric"
+                        />
+                    </View>
+
+                    {transaction.type === 'income' && (
+                        <View style={styles.flex1}>
+                            <Text style={styles.label}>Data</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="DD/MM/AA"
+                                placeholderTextColor={theme.colors.textMuted}
+                                value={receivedDate}
+                                onChangeText={handleReceivedDateChange}
+                                keyboardType="numeric"
+                                maxLength={10}
+                            />
+                        </View>
+                    )}
+
+                    {transaction.type === 'expense' && (
+                        <View style={styles.flex1}>
+                            <Text style={styles.label}>Venc.</Text>
+                            <TextInput
+                                style={styles.input}
+                                placeholder="DD"
+                                placeholderTextColor={theme.colors.textMuted}
+                                value={dueDate}
+                                onChangeText={handleDateChange}
+                                keyboardType="numeric"
+                                maxLength={2}
+                            />
+                        </View>
+                    )}
                 </View>
-
-                {transaction.type === 'income' && (
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Data do Recebimento (opcional)</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="DD/MM/AAAA"
-                            placeholderTextColor={theme.colors.textMuted}
-                            value={receivedDate}
-                            onChangeText={handleReceivedDateChange}
-                            keyboardType="numeric"
-                            maxLength={10}
-                        />
-                    </View>
-                )}
-
-                {transaction.type === 'expense' && (
-                    <View style={styles.section}>
-                        <Text style={styles.label}>Data de Vencimento</Text>
-                        <TextInput
-                            style={styles.input}
-                            placeholder="DD/MM/AAAA"
-                            placeholderTextColor={theme.colors.textMuted}
-                            value={dueDate}
-                            onChangeText={handleDateChange}
-                            keyboardType="numeric"
-                            maxLength={10}
-                        />
-                    </View>
-                )}
 
                 {transaction.type === 'expense' && (
                     <View style={styles.section}>
@@ -339,6 +449,29 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                     </View>
                 )}
 
+                <View style={styles.actionsRow}>
+                    {transaction.isRecurring && transaction.recurrenceId && (
+                        <TouchableOpacity
+                            style={styles.cancelRecurrenceButton}
+                            onPress={handleCancelRecurrence}
+                        >
+                            <Ionicons name="close-circle-outline" size={18} color={theme.colors.white} />
+                            <Text style={styles.cancelRecurrenceButtonText} numberOfLines={1} ellipsizeMode="tail">Cancelar Recorrência</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                        style={[
+                            styles.deleteButton,
+                            !(transaction.isRecurring && transaction.recurrenceId) && styles.deleteButtonFullWidth
+                        ]}
+                        onPress={handleDelete}
+                    >
+                        <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+                        <Text style={styles.deleteButtonText} numberOfLines={1} ellipsizeMode="tail">Excluir {transaction.isSalary ? 'Salário' : 'Transação'}</Text>
+                    </TouchableOpacity>
+                </View>
+
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity
                         style={[styles.button, styles.cancelButton]}
@@ -354,14 +487,6 @@ export default function EditTransactionScreen({ route, navigation }: any) {
                         <Text style={styles.saveButtonText}>Salvar Alterações</Text>
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                    style={styles.deleteButton}
-                    onPress={handleDelete}
-                >
-                    <Ionicons name="trash-outline" size={20} color={theme.colors.danger} />
-                    <Text style={styles.deleteButtonText}>Excluir {transaction.isSalary ? 'Salário' : 'Transação'}</Text>
-                </TouchableOpacity>
             </ScrollView>
         </SafeAreaView>
     );

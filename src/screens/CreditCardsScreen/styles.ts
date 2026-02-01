@@ -24,10 +24,29 @@ const styles = StyleSheet.create({
         flex: 1,
         gap: 6,
     },
+    cardNameRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 8,
+    },
     cardName: {
         fontSize: theme.fontSize.md,
         fontWeight: theme.fontWeight.semibold,
         color: theme.colors.text,
+    },
+    paidBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: theme.colors.successLight || 'rgba(34, 197, 94, 0.1)',
+        paddingHorizontal: 8,
+        paddingVertical: 3,
+        borderRadius: 12,
+    },
+    paidBadgeText: {
+        fontSize: theme.fontSize.xs,
+        fontWeight: theme.fontWeight.medium,
+        color: theme.colors.success,
     },
     cardMeta: {
         flexDirection: 'row',
@@ -38,15 +57,51 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize.sm,
         color: theme.colors.textSecondary,
     },
+    amountContainer: {
+        marginTop: theme.spacing.sm,
+        paddingTop: theme.spacing.sm,
+        borderTopWidth: 1,
+        borderTopColor: theme.colors.border,
+    },
+    amountLabel: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textSecondary,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+        marginBottom: 4,
+    },
+    amountValue: {
+        fontSize: theme.fontSize.xl,
+        fontWeight: theme.fontWeight.bold,
+        color: theme.colors.danger,
+    },
+    amountValuePaid: {
+        color: theme.colors.success,
+    },
+    amountValueZero: {
+        color: theme.colors.success,
+    },
     cardActions: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: theme.spacing.sm,
     },
-    editButton: {
+    actionButton: {
         padding: 8,
         backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.sm,
+    },
+    actionButtonPaid: {
+        backgroundColor: theme.colors.successLight || 'rgba(34, 197, 94, 0.1)',
+    },
+    editButton: {
+        position: 'absolute',
+        top: theme.spacing.md,
+        right: theme.spacing.md,
+        padding: 8,
+        backgroundColor: theme.colors.surface,
+        borderRadius: theme.borderRadius.sm,
+        zIndex: 1,
     },
     deleteButton: {
         padding: 8,
@@ -196,6 +251,39 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize.md,
         color: theme.colors.danger,
         fontWeight: theme.fontWeight.medium,
+    },
+    filterContainer: {
+        flexDirection: 'row',
+        gap: theme.spacing.sm,
+        padding: theme.spacing.md,
+        backgroundColor: theme.colors.background,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    filterButton: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        paddingVertical: 10,
+        paddingHorizontal: theme.spacing.sm,
+        borderRadius: theme.borderRadius.md,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        backgroundColor: theme.colors.backgroundCard,
+    },
+    filterButtonActive: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    filterButtonText: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: theme.fontWeight.medium,
+        color: theme.colors.text,
+    },
+    filterButtonTextActive: {
+        color: theme.colors.white,
     },
 });
 

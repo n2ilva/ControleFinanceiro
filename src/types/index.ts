@@ -18,6 +18,9 @@ export interface Transaction {
   groupId?: string; // Grupo compartilhado
   recurrenceId?: string; // ID compartilhado entre transações recorrentes geradas juntas
   originalAmount?: number; // Valor original da recorrência (para comparar e destacar mudanças)
+  installments?: number; // Número total de parcelas (ex: 3)
+  installmentNumber?: number; // Número da parcela atual (ex: 1 de 3)
+  installmentId?: string; // ID compartilhado entre parcelas da mesma compra
 }
 
 export interface MonthlyData {
@@ -58,6 +61,7 @@ export interface CreditCard {
   createdAt: string;
   userId: string;
   groupId?: string;
+  paidMonths?: string[]; // Array de strings no formato "YYYY-MM" para rastrear meses pagos
 }
 
 export interface Group {

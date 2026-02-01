@@ -65,6 +65,8 @@ export const CATEGORY_ICONS: { [key: string]: string } = {
     
     // Receitas
     salario: 'cash',
+    decimoTerceiro: 'cash-outline',
+    ferias: 'sunny',
     deposito: 'card',
     freelance: 'briefcase',
     bonus: 'sparkles',
@@ -129,6 +131,8 @@ export const EXPENSE_CATEGORIES = [
  */
 export const INCOME_CATEGORIES = [
     { id: 'salario', label: 'Salário', icon: 'cash' },
+    { id: 'decimoTerceiro', label: '13º Salário', icon: 'cash-outline' },
+    { id: 'ferias', label: 'Férias', icon: 'sunny' },
     { id: 'deposito', label: 'Depósito', icon: 'card' },
     { id: 'freelance', label: 'Freelance', icon: 'briefcase' },
     { id: 'bonus', label: 'Bônus', icon: 'sparkles' },

@@ -13,6 +13,17 @@ const styles = StyleSheet.create({
     section: {
         marginBottom: theme.spacing.lg,
     },
+    row: {
+        flexDirection: 'row',
+        gap: theme.spacing.md,
+        marginBottom: theme.spacing.lg,
+    },
+    flex1: {
+        flex: 1,
+    },
+    flex2: {
+        flex: 2,
+    },
     sectionTitle: {
         fontSize: theme.fontSize.lg,
         fontWeight: theme.fontWeight.bold,
@@ -124,19 +135,7 @@ const styles = StyleSheet.create({
     typeButtonTextActive: {
         color: theme.colors.white,
     },
-    qrFab: {
-        position: 'absolute',
-        bottom: 100,
-        right: 20,
-        width: 56,
-        height: 56,
-        borderRadius: 28,
-        backgroundColor: theme.colors.primary,
-        alignItems: 'center',
-        justifyContent: 'center',
-        ...theme.shadows.lg,
-        elevation: 8,
-    },
+
     linkButton: {
         marginTop: theme.spacing.xs,
         alignSelf: 'flex-start',
@@ -229,6 +228,27 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize.md,
         fontWeight: theme.fontWeight.bold,
         color: theme.colors.white,
+    },
+    toggleContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: theme.spacing.sm,
+    },
+    installmentInputContainer: {
+        marginTop: theme.spacing.sm,
+        gap: theme.spacing.xs,
+    },
+    installmentInput: {
+        backgroundColor: theme.colors.backgroundCard,
+        borderRadius: theme.borderRadius.md,
+        padding: theme.spacing.md,
+        fontSize: theme.fontSize.lg,
+        color: theme.colors.text,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        textAlign: 'center',
+        fontWeight: theme.fontWeight.bold,
     },
 });
 

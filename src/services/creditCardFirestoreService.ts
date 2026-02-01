@@ -84,6 +84,7 @@ export const CreditCardFirestoreService = {
           createdAt: data.createdAt?.toDate?.().toISOString?.() || new Date().toISOString(),
           userId: data.userId,
           ...(data.groupId && { groupId: data.groupId }),
+          ...(data.paidMonths && { paidMonths: data.paidMonths }),
         });
       });
 

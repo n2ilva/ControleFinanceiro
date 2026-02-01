@@ -17,6 +17,9 @@ import { CategoryData, Transaction, CreditCard, Salary } from '../../types';
 import { theme } from '../../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import styles from './styles';
+import { additionalStyles } from './additionalStyles';
+
+const allStyles = { ...styles, ...additionalStyles };
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -66,6 +69,40 @@ interface MonthSummary {
     cardExpenses: CardExpense[];
     upcomingDues: DueItem[];
     overdueDues: DueItem[];
+    savingsRate: number;
+    transactionCount: number;
+    averageExpensePerDay: number;
+}
+
+interface MonthComparison {
+    expenseChange: number;
+    expenseChangePercent: number;
+    incomeChange: number;
+    incomeChangePercent: number;
+    balanceChange: number;
+    trend: 'improving' | 'worsening' | 'stable';
+}
+
+interface FinancialScore {
+    score: number;
+    savingsScore: number;
+    paymentScore: number;
+    diversificationScore: number;
+    creditUsageScore: number;
+    recommendations: string[];
+}
+
+interface TopExpense {
+    description: string;
+    amount: number;
+    category: string;
+    date: string;
+}
+
+interface PeriodStats {
+    dayOfWeekStats: { day: string; total: number; count: number }[];
+    categoryGrowth: { category: string; growth: number; growthPercent: number }[];
+    topExpenses: TopExpense[];
 }
 
 const CATEGORY_ICONS: { [key: string]: string } = {
@@ -121,14 +158,63 @@ export default function ChartsScreen() {
         income: [] as number[],
     });
     const [insights, setInsights] = useState<Insight[]>([]);
-    const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'cards' | 'dues'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'cards' | 'dues' | 'comparison' | 'ranking' | 'score'>('overview');
+    const [previousMonthData, setPreviousMonthData] = useState<MonthSummary | null>(null);
+    const [monthComparison, setMonthComparison] = useState<MonthComparison | null>(null);
+    const [financialScore, setFinancialScore] = useState<FinancialScore | null>(null);
+    const [periodStats, setPeriodStats] = useState<PeriodStats | null>(null);
+    const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
 
     const processMonthData = (transactions: Transaction[], month: number, year: number, creditCards: CreditCard[], salaries: Salary[] = []): MonthSummary => {
         const today = new Date();
         
+        // Função para calcular o período de fatura de uma transação
+        const getInvoicePeriod = (transactionDate: string, dueDay: number): { month: number; year: number } => {
+            const txDate = new Date(transactionDate);
+            const txDay = txDate.getUTCDate(); // Usar UTC para evitar problemas de timezone
+            const txMonth = txDate.getUTCMonth();
+            const txYear = txDate.getUTCFullYear();
+
+            let invoiceMonth: number;
+            let invoiceYear: number;
+
+            // Período: do dia de vencimento (exclusive) do mês anterior até o dia anterior ao vencimento (inclusive)
+            // Exemplo: vencimento dia 20 → compras de 21/Dez a 19/Jan entram na fatura que vence 20/Jan
+            //          compras do dia 20/Jan em diante entram na fatura que vence 20/Fev
+            if (txDay >= dueDay) {
+                // Compra no dia de vencimento ou depois → vai para a fatura do próximo mês
+                if (txMonth === 11) {
+                    invoiceMonth = 0;
+                    invoiceYear = txYear + 1;
+                } else {
+                    invoiceMonth = txMonth + 1;
+                    invoiceYear = txYear;
+                }
+            } else {
+                // Compra antes do dia de vencimento → fatura do mês atual
+                invoiceMonth = txMonth;
+                invoiceYear = txYear;
+            }
+
+            return { month: invoiceMonth, year: invoiceYear };
+        };
+
         const monthTransactions = transactions.filter(t => {
             const d = new Date(t.date);
-            return d.getMonth() === month && d.getFullYear() === year;
+            const txMonth = d.getMonth();
+            const txYear = d.getFullYear();
+            
+            // Para transações de cartão de crédito, usar período de fatura
+            if (t.cardId && t.cardType === 'credit') {
+                const card = creditCards.find(c => c.id === t.cardId);
+                if (card) {
+                    const invoicePeriod = getInvoicePeriod(t.date, card.dueDay);
+                    return invoicePeriod.month === month && invoicePeriod.year === year;
+                }
+            }
+            
+            // Para outras transações, usar mês da transação
+            return txMonth === month && txYear === year;
         });
 
         const expenses = monthTransactions.filter(t => t.type === 'expense');
@@ -156,6 +242,9 @@ export default function ChartsScreen() {
         // Categorias
         const categoryMap = new Map<string, number>();
         expenses.forEach(t => {
+            // Ignorar categoria "cartao" - usar a categoria real da compra
+            if (t.category === 'cartao') return;
+            
             const current = categoryMap.get(t.category) || 0;
             categoryMap.set(t.category, current + t.amount);
         });
@@ -218,13 +307,19 @@ export default function ChartsScreen() {
 
         const monthName = new Date(year, month).toLocaleString('pt-BR', { month: 'long' });
 
+        const balance = totalIncome - totalExpenses;
+        const savingsRate = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+        const transactionCount = monthTransactions.length;
+        const daysInMonth = new Date(year, month + 1, 0).getDate();
+        const averageExpensePerDay = totalExpenses / daysInMonth;
+
         return {
             month,
             year,
             monthName: monthName.charAt(0).toUpperCase() + monthName.slice(1),
             totalExpenses,
             totalIncome,
-            balance: totalIncome - totalExpenses,
+            balance,
             paidExpenses,
             pendingExpenses,
             categories,
@@ -232,13 +327,204 @@ export default function ChartsScreen() {
             cardExpenses,
             upcomingDues,
             overdueDues,
+            savingsRate,
+            transactionCount,
+            averageExpensePerDay,
         };
     };
 
-    const generateInsights = (data: MonthSummary) => {
+    const calculateMonthComparison = (current: MonthSummary, previous: MonthSummary): MonthComparison => {
+        const expenseChange = current.totalExpenses - previous.totalExpenses;
+        const expenseChangePercent = previous.totalExpenses > 0 ? (expenseChange / previous.totalExpenses) * 100 : 0;
+        
+        const incomeChange = current.totalIncome - previous.totalIncome;
+        const incomeChangePercent = previous.totalIncome > 0 ? (incomeChange / previous.totalIncome) * 100 : 0;
+        
+        const balanceChange = current.balance - previous.balance;
+        
+        let trend: 'improving' | 'worsening' | 'stable' = 'stable';
+        if (balanceChange > previous.balance * 0.1) trend = 'improving';
+        else if (balanceChange < -previous.balance * 0.1) trend = 'worsening';
+        
+        return {
+            expenseChange,
+            expenseChangePercent,
+            incomeChange,
+            incomeChangePercent,
+            balanceChange,
+            trend,
+        };
+    };
+
+    const calculateFinancialScore = (data: MonthSummary, comparison: MonthComparison | null): FinancialScore => {
+        const recommendations: string[] = [];
+        
+        // 1. Savings Score (0-30 pontos)
+        let savingsScore = 0;
+        if (data.savingsRate >= 30) savingsScore = 30;
+        else if (data.savingsRate >= 20) savingsScore = 25;
+        else if (data.savingsRate >= 10) savingsScore = 15;
+        else if (data.savingsRate >= 5) savingsScore = 10;
+        else if (data.savingsRate > 0) savingsScore = 5;
+        
+        if (data.savingsRate < 20) {
+            recommendations.push('Tente poupar pelo menos 20% da sua renda mensal');
+        }
+        
+        // 2. Payment Score (0-30 pontos)
+        const paymentRate = data.totalExpenses > 0 ? (data.paidExpenses / data.totalExpenses) * 100 : 100;
+        let paymentScore = 0;
+        if (paymentRate >= 95) paymentScore = 30;
+        else if (paymentRate >= 80) paymentScore = 20;
+        else if (paymentRate >= 60) paymentScore = 10;
+        else paymentScore = 5;
+        
+        if (data.overdueDues.length > 0) {
+            paymentScore = Math.max(0, paymentScore - 10);
+            recommendations.push(`Pague as ${data.overdueDues.length} conta(s) atrasada(s)`);
+        }
+        
+        // 3. Diversification Score (0-20 pontos)
+        const categoriesCount = data.categories.length;
+        const topCategoryPercent = data.categories.length > 0 ? data.categories[0].percentage : 0;
+        let diversificationScore = 0;
+        
+        if (topCategoryPercent < 30 && categoriesCount >= 5) diversificationScore = 20;
+        else if (topCategoryPercent < 40 && categoriesCount >= 4) diversificationScore = 15;
+        else if (topCategoryPercent < 50) diversificationScore = 10;
+        else diversificationScore = 5;
+        
+        if (topCategoryPercent > 50) {
+            recommendations.push('Seus gastos estão muito concentrados em uma categoria');
+        }
+        
+        // 4. Credit Usage Score (0-20 pontos)
+        const creditTotal = data.cardExpenses.filter(c => c.cardType === 'credit').reduce((sum, c) => sum + c.total, 0);
+        const creditUsageRate = data.totalExpenses > 0 ? (creditTotal / data.totalExpenses) * 100 : 0;
+        let creditUsageScore = 0;
+        
+        if (creditUsageRate < 30) creditUsageScore = 20;
+        else if (creditUsageRate < 50) creditUsageScore = 15;
+        else if (creditUsageRate < 70) creditUsageScore = 10;
+        else creditUsageScore = 5;
+        
+        if (creditUsageRate > 60) {
+            recommendations.push('Use mais o débito para ter melhor controle dos gastos');
+        }
+        
+        const score = savingsScore + paymentScore + diversificationScore + creditUsageScore;
+        
+        // Adicionar recomendações baseadas na comparação
+        if (comparison && comparison.expenseChangePercent > 15) {
+            recommendations.push('Suas despesas aumentaram significativamente. Revise seus gastos');
+        }
+        
+        if (data.savingsRate > 25) {
+            recommendations.push('Excelente! Considere investir parte das suas economias');
+        }
+        
+        return {
+            score,
+            savingsScore,
+            paymentScore,
+            diversificationScore,
+            creditUsageScore,
+            recommendations,
+        };
+    };
+
+    const calculatePeriodStats = (data: MonthSummary, previousData: MonthSummary | null): PeriodStats => {
+        // Estatísticas por dia da semana
+        const dayMap = new Map<number, { total: number; count: number }>();
+        data.transactions.filter(t => t.type === 'expense').forEach(t => {
+            const day = new Date(t.date).getDay();
+            const current = dayMap.get(day) || { total: 0, count: 0 };
+            dayMap.set(day, {
+                total: current.total + t.amount,
+                count: current.count + 1,
+            });
+        });
+        
+        const dayNames = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        const dayOfWeekStats = Array.from(dayMap.entries())
+            .map(([day, stats]) => ({
+                day: dayNames[day],
+                total: stats.total,
+                count: stats.count,
+            }))
+            .sort((a, b) => b.total - a.total);
+        
+        // Crescimento por categoria (comparado com mês anterior)
+        const categoryGrowth: { category: string; growth: number; growthPercent: number }[] = [];
+        if (previousData) {
+            const prevCategoryMap = new Map(previousData.categories.map(c => [c.category, c.amount]));
+            data.categories.forEach(cat => {
+                const prevAmount = prevCategoryMap.get(cat.category) || 0;
+                const growth = cat.amount - prevAmount;
+                const growthPercent = prevAmount > 0 ? (growth / prevAmount) * 100 : 100;
+                if (Math.abs(growthPercent) > 10) {
+                    categoryGrowth.push({
+                        category: cat.category,
+                        growth,
+                        growthPercent,
+                    });
+                }
+            });
+            categoryGrowth.sort((a, b) => Math.abs(b.growthPercent) - Math.abs(a.growthPercent));
+        }
+        
+        // Top 5 maiores gastos (ignorar categoria "cartao")
+        const topExpenses: TopExpense[] = data.transactions
+            .filter(t => t.type === 'expense' && t.category !== 'cartao')
+            .sort((a, b) => b.amount - a.amount)
+            .slice(0, 5)
+            .map(t => ({
+                description: t.description,
+                amount: t.amount,
+                category: t.category,
+                date: new Date(t.date).toLocaleDateString('pt-BR'),
+            }));
+        
+        return {
+            dayOfWeekStats,
+            categoryGrowth,
+            topExpenses,
+        };
+    };
+
+    const generateInsights = (data: MonthSummary, comparison: MonthComparison | null) => {
         const newInsights: Insight[] = [];
 
-        // 1. Saldo do mês (primeira posição)
+        // 1. Comparação com mês anterior (primeira posição se houver)
+        if (comparison) {
+            if (comparison.trend === 'improving') {
+                newInsights.push({
+                    type: 'success',
+                    title: '📈 Situação Melhorando',
+                    message: `Saldo aumentou R$ ${formatCurrency(Math.abs(comparison.balanceChange))} vs mês anterior.`,
+                    icon: 'trending-up'
+                });
+            } else if (comparison.trend === 'worsening') {
+                newInsights.push({
+                    type: 'warning',
+                    title: '📉 Atenção aos Gastos',
+                    message: `Saldo reduziu R$ ${formatCurrency(Math.abs(comparison.balanceChange))} vs mês anterior.`,
+                    icon: 'trending-down'
+                });
+            }
+            
+            if (Math.abs(comparison.expenseChangePercent) > 10) {
+                const verb = comparison.expenseChange > 0 ? 'aumentaram' : 'diminuíram';
+                newInsights.push({
+                    type: comparison.expenseChange > 0 ? 'warning' : 'success',
+                    title: `Despesas ${verb}`,
+                    message: `${Math.abs(comparison.expenseChangePercent).toFixed(0)}% (R$ ${formatCurrency(Math.abs(comparison.expenseChange))}) vs mês anterior.`,
+                    icon: comparison.expenseChange > 0 ? 'arrow-up' : 'arrow-down'
+                });
+            }
+        }
+
+        // 2. Saldo do mês
         if (data.balance < 0) {
             newInsights.push({
                 type: 'danger',
@@ -433,8 +719,6 @@ export default function ChartsScreen() {
         setInsights(newInsights);
     };
 
-    const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
-
     const loadData = async () => {
         setLoading(true);
         try {
@@ -466,7 +750,30 @@ export default function ChartsScreen() {
             // Selecionar mês atual
             const currentData = processMonthData(transactions, currentMonth, currentYear, creditCards, salaries);
             setSelectedData(currentData);
-            generateInsights(currentData);
+            
+            // Calcular mês anterior
+            let prevMonth = currentMonth - 1;
+            let prevYear = currentYear;
+            if (prevMonth < 0) {
+                prevMonth = 11;
+                prevYear = currentYear - 1;
+            }
+            const prevData = processMonthData(transactions, prevMonth, prevYear, creditCards, salaries);
+            setPreviousMonthData(prevData);
+            
+            // Calcular comparação
+            const comparison = calculateMonthComparison(currentData, prevData);
+            setMonthComparison(comparison);
+            
+            // Calcular score financeiro
+            const score = calculateFinancialScore(currentData, comparison);
+            setFinancialScore(score);
+            
+            // Calcular estatísticas do período
+            const stats = calculatePeriodStats(currentData, prevData);
+            setPeriodStats(stats);
+            
+            generateInsights(currentData, comparison);
 
         } catch (error) {
             console.error('Error loading chart data:', error);
@@ -506,7 +813,27 @@ export default function ChartsScreen() {
         
         const newData = processMonthData(allTransactions, newMonth, newYear, cards, allSalaries);
         setSelectedData(newData);
-        generateInsights(newData);
+        
+        // Calcular mês anterior ao novo mês selecionado
+        let prevMonth = newMonth - 1;
+        let prevYear = newYear;
+        if (prevMonth < 0) {
+            prevMonth = 11;
+            prevYear = newYear - 1;
+        }
+        const prevData = processMonthData(allTransactions, prevMonth, prevYear, cards, allSalaries);
+        setPreviousMonthData(prevData);
+        
+        const comparison = calculateMonthComparison(newData, prevData);
+        setMonthComparison(comparison);
+        
+        const score = calculateFinancialScore(newData, comparison);
+        setFinancialScore(score);
+        
+        const stats = calculatePeriodStats(newData, prevData);
+        setPeriodStats(stats);
+        
+        generateInsights(newData, comparison);
     };
 
     const chartConfig = {
@@ -552,6 +879,53 @@ export default function ChartsScreen() {
 
         return (
             <View>
+                {/* Comparação com mês anterior */}
+                {monthComparison && previousMonthData && (
+                    <View style={styles.card}>
+                        <Text style={styles.cardTitle}>Comparação com Mês Anterior</Text>
+                        <View style={allStyles.comparisonGrid}>
+                            <View style={allStyles.comparisonItem}>
+                                <Text style={allStyles.comparisonLabel}>Despesas</Text>
+                                <Text style={[
+                                    allStyles.comparisonValue,
+                                    { color: monthComparison.expenseChange > 0 ? theme.colors.danger : theme.colors.success }
+                                ]}>
+                                    {monthComparison.expenseChange > 0 ? '+' : ''}{formatCurrency(monthComparison.expenseChange)}
+                                </Text>
+                                <Text style={allStyles.comparisonPercent}>
+                                    {monthComparison.expenseChangePercent > 0 ? '+' : ''}{monthComparison.expenseChangePercent.toFixed(1)}%
+                                </Text>
+                            </View>
+                            <View style={allStyles.comparisonItem}>
+                                <Text style={allStyles.comparisonLabel}>Receitas</Text>
+                                <Text style={[
+                                    allStyles.comparisonValue,
+                                    { color: monthComparison.incomeChange > 0 ? theme.colors.success : theme.colors.danger }
+                                ]}>
+                                    {monthComparison.incomeChange > 0 ? '+' : ''}{formatCurrency(monthComparison.incomeChange)}
+                                </Text>
+                                <Text style={allStyles.comparisonPercent}>
+                                    {monthComparison.incomeChangePercent > 0 ? '+' : ''}{monthComparison.incomeChangePercent.toFixed(1)}%
+                                </Text>
+                            </View>
+                            <View style={allStyles.comparisonItem}>
+                                <Text style={allStyles.comparisonLabel}>Saldo</Text>
+                                <Text style={[
+                                    allStyles.comparisonValue,
+                                    { color: monthComparison.balanceChange > 0 ? theme.colors.success : theme.colors.danger }
+                                ]}>
+                                    {monthComparison.balanceChange > 0 ? '+' : ''}{formatCurrency(monthComparison.balanceChange)}
+                                </Text>
+                                <Ionicons 
+                                    name={monthComparison.trend === 'improving' ? 'trending-up' : monthComparison.trend === 'worsening' ? 'trending-down' : 'remove'} 
+                                    size={20} 
+                                    color={monthComparison.trend === 'improving' ? theme.colors.success : monthComparison.trend === 'worsening' ? theme.colors.danger : theme.colors.textMuted}
+                                />
+                            </View>
+                        </View>
+                    </View>
+                )}
+
                 {/* Resumo */}
                 <View style={styles.summaryGrid}>
                     <View style={styles.summaryCardSmall}>
@@ -713,6 +1087,13 @@ export default function ChartsScreen() {
         }
 
         const totalCardExpenses = selectedData.cardExpenses.reduce((sum, c) => sum + c.total, 0);
+        
+        // Separar cartões por tipo
+        const creditCards = selectedData.cardExpenses.filter(c => c.cardType === 'credit');
+        const debitCards = selectedData.cardExpenses.filter(c => c.cardType === 'debit');
+        
+        const totalCredit = creditCards.reduce((sum, c) => sum + c.total, 0);
+        const totalDebit = debitCards.reduce((sum, c) => sum + c.total, 0);
 
         return (
             <View>
@@ -727,108 +1108,414 @@ export default function ChartsScreen() {
                     </View>
                 </View>
 
-                {/* Lista de cartões */}
-                {selectedData.cardExpenses.map((card, index) => (
-                    <View key={index} style={styles.cardExpenseItem}>
-                        <View style={styles.cardExpenseHeader}>
-                            <View style={styles.cardExpenseInfo}>
-                                <Ionicons 
-                                    name={card.cardType === 'credit' ? 'card' : 'card-outline'} 
-                                    size={24} 
-                                    color={card.cardType === 'credit' ? theme.colors.primary : theme.colors.success} 
-                                />
-                                <View>
-                                    <Text style={styles.cardExpenseName}>{card.cardName}</Text>
-                                    <Text style={styles.cardExpenseType}>
-                                        {card.cardType === 'credit' ? 'Crédito' : 'Débito'} • {card.count} compra(s)
-                                    </Text>
+                {/* Cartões de Crédito */}
+                {creditCards.length > 0 && (
+                    <View style={styles.cardSection}>
+                        <View style={styles.cardSectionHeader}>
+                            <Ionicons name="card" size={20} color={theme.colors.primary} />
+                            <Text style={styles.cardSectionTitle}>Cartões de Crédito</Text>
+                            <Text style={styles.cardSectionTotal}>R$ {formatCurrency(totalCredit)}</Text>
+                        </View>
+                        {creditCards.map((card, index) => (
+                            <View key={index} style={styles.cardExpenseItem}>
+                                <View style={styles.cardExpenseHeader}>
+                                    <View style={styles.cardExpenseInfo}>
+                                        <Ionicons 
+                                            name="card" 
+                                            size={24} 
+                                            color={theme.colors.primary} 
+                                        />
+                                        <View>
+                                            <Text style={styles.cardExpenseName}>{card.cardName}</Text>
+                                            <Text style={styles.cardExpenseType}>
+                                                {card.count} compra(s)
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.cardExpenseTotal}>R$ {formatCurrency(card.total)}</Text>
+                                </View>
+                                <View style={styles.progressBarBg}>
+                                    <View 
+                                        style={[
+                                            styles.progressBarFill, 
+                                            { 
+                                                width: `${(card.total / totalCardExpenses) * 100}%`,
+                                                backgroundColor: theme.colors.primary
+                                            }
+                                        ]} 
+                                    />
                                 </View>
                             </View>
-                            <Text style={styles.cardExpenseTotal}>R$ {formatCurrency(card.total)}</Text>
-                        </View>
-                        <View style={styles.progressBarBg}>
-                            <View 
-                                style={[
-                                    styles.progressBarFill, 
-                                    { 
-                                        width: `${(card.total / totalCardExpenses) * 100}%`,
-                                        backgroundColor: card.cardType === 'credit' ? theme.colors.primary : theme.colors.success 
-                                    }
-                                ]} 
-                            />
-                        </View>
+                        ))}
                     </View>
-                ))}
+                )}
+
+                {/* Cartões de Débito */}
+                {debitCards.length > 0 && (
+                    <View style={styles.cardSection}>
+                        <View style={styles.cardSectionHeader}>
+                            <Ionicons name="card-outline" size={20} color={theme.colors.success} />
+                            <Text style={styles.cardSectionTitle}>Cartões de Débito</Text>
+                            <Text style={styles.cardSectionTotal}>R$ {formatCurrency(totalDebit)}</Text>
+                        </View>
+                        {debitCards.map((card, index) => (
+                            <View key={index} style={styles.cardExpenseItem}>
+                                <View style={styles.cardExpenseHeader}>
+                                    <View style={styles.cardExpenseInfo}>
+                                        <Ionicons 
+                                            name="card-outline" 
+                                            size={24} 
+                                            color={theme.colors.success} 
+                                        />
+                                        <View>
+                                            <Text style={styles.cardExpenseName}>{card.cardName}</Text>
+                                            <Text style={styles.cardExpenseType}>
+                                                {card.count} compra(s)
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <Text style={styles.cardExpenseTotal}>R$ {formatCurrency(card.total)}</Text>
+                                </View>
+                                <View style={styles.progressBarBg}>
+                                    <View 
+                                        style={[
+                                            styles.progressBarFill, 
+                                            { 
+                                                width: `${(card.total / totalCardExpenses) * 100}%`,
+                                                backgroundColor: theme.colors.success
+                                            }
+                                        ]} 
+                                    />
+                                </View>
+                            </View>
+                        ))}
+                    </View>
+                )}
             </View>
         );
     };
 
-    const renderDuesTab = () => {
-        if (!selectedData) return null;
-
-        const hasOverdue = selectedData.overdueDues.length > 0;
-        const hasUpcoming = selectedData.upcomingDues.length > 0;
-
-        if (!hasOverdue && !hasUpcoming) {
+    const renderComparisonTab = () => {
+        if (!selectedData || !previousMonthData) {
             return (
                 <View style={styles.emptyContainer}>
-                    <Ionicons name="checkmark-circle-outline" size={64} color={theme.colors.success} />
-                    <Text style={styles.emptyText}>Todas as contas estão pagas!</Text>
+                    <Ionicons name="git-compare-outline" size={64} color={theme.colors.textMuted} />
+                    <Text style={styles.emptyText}>Dados insuficientes para comparação</Text>
                 </View>
             );
         }
 
         return (
             <View>
-                {/* Contas atrasadas */}
-                {hasOverdue && (
-                    <View style={styles.dueSection}>
-                        <View style={styles.dueSectionHeader}>
-                            <Ionicons name="alert-circle" size={20} color={theme.colors.danger} />
-                            <Text style={[styles.dueSectionTitle, { color: theme.colors.danger }]}>
-                                Contas Atrasadas ({selectedData.overdueDues.length})
-                            </Text>
-                        </View>
-                        {selectedData.overdueDues.map((due, index) => (
-                            <View key={index} style={[styles.dueItem, styles.dueItemOverdue]}>
-                                <View style={styles.dueItemInfo}>
-                                    <Text style={styles.dueItemDescription}>{due.description}</Text>
-                                    <Text style={styles.dueItemDate}>
-                                        Venceu há {Math.abs(due.daysUntilDue)} dia(s) - {new Date(due.dueDate).toLocaleDateString('pt-BR')}
+                {/* Gráfico comparativo de categorias */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Evolução por Categoria</Text>
+                    {periodStats && periodStats.categoryGrowth.length > 0 ? (
+                        periodStats.categoryGrowth.slice(0, 5).map((item, index) => (
+                            <View key={index} style={allStyles.categoryGrowthItem}>
+                                <View style={allStyles.categoryGrowthInfo}>
+                                    <Text style={allStyles.categoryGrowthName}>{item.category}</Text>
+                                    <Text style={[
+                                        allStyles.categoryGrowthPercent,
+                                        { color: item.growth > 0 ? theme.colors.danger : theme.colors.success }
+                                    ]}>
+                                        {item.growth > 0 ? '+' : ''}{item.growthPercent.toFixed(0)}%
                                     </Text>
                                 </View>
-                                <Text style={[styles.dueItemAmount, { color: theme.colors.danger }]}>
-                                    R$ {formatCurrency(due.amount)}
+                                <Text style={[
+                                    allStyles.categoryGrowthValue,
+                                    { color: item.growth > 0 ? theme.colors.danger : theme.colors.success }
+                                ]}>
+                                    {item.growth > 0 ? '+' : ''}R$ {formatCurrency(Math.abs(item.growth))}
                                 </Text>
                             </View>
-                        ))}
-                    </View>
-                )}
+                        ))
+                    ) : (
+                        <Text style={styles.emptyText}>Sem mudanças significativas nas categorias</Text>
+                    )}
+                </View>
 
-                {/* Próximos vencimentos */}
-                {hasUpcoming && (
-                    <View style={styles.dueSection}>
-                        <View style={styles.dueSectionHeader}>
-                            <Ionicons name="time" size={20} color={theme.colors.warning} />
-                            <Text style={[styles.dueSectionTitle, { color: theme.colors.warning }]}>
-                                Próximos Vencimentos ({selectedData.upcomingDues.length})
+                {/* Taxa de economia mensal */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Taxa de Economia</Text>
+                    <View style={allStyles.savingsRateContainer}>
+                        <View style={allStyles.savingsRateItem}>
+                            <Text style={allStyles.savingsRateLabel}>Mês Atual</Text>
+                            <Text style={[
+                                allStyles.savingsRateValue,
+                                { color: selectedData.savingsRate >= 20 ? theme.colors.success : selectedData.savingsRate >= 10 ? theme.colors.warning : theme.colors.danger }
+                            ]}>
+                                {selectedData.savingsRate.toFixed(1)}%
                             </Text>
+                            <Text style={allStyles.savingsRateAmount}>R$ {formatCurrency(selectedData.balance)}</Text>
                         </View>
-                        {selectedData.upcomingDues.map((due, index) => (
-                            <View key={index} style={[styles.dueItem, due.daysUntilDue <= 3 && styles.dueItemUrgent]}>
-                                <View style={styles.dueItemInfo}>
-                                    <Text style={styles.dueItemDescription}>{due.description}</Text>
-                                    <Text style={styles.dueItemDate}>
-                                        {due.daysUntilDue === 0 
-                                            ? 'Vence hoje!' 
-                                            : due.daysUntilDue === 1 
-                                                ? 'Vence amanhã' 
-                                                : `Vence em ${due.daysUntilDue} dias`} - {new Date(due.dueDate).toLocaleDateString('pt-BR')}
-                                    </Text>
+                        <View style={allStyles.savingsRateItem}>
+                            <Text style={allStyles.savingsRateLabel}>Mês Anterior</Text>
+                            <Text style={[
+                                allStyles.savingsRateValue,
+                                { color: previousMonthData.savingsRate >= 20 ? theme.colors.success : previousMonthData.savingsRate >= 10 ? theme.colors.warning : theme.colors.danger }
+                            ]}>
+                                {previousMonthData.savingsRate.toFixed(1)}%
+                            </Text>
+                            <Text style={allStyles.savingsRateAmount}>R$ {formatCurrency(previousMonthData.balance)}</Text>
+                        </View>
+                    </View>
+                </View>
+
+                {/* Comparação de categorias lado a lado */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Top 5 Categorias - Comparação</Text>
+                    {selectedData.categories.slice(0, 5).map((cat, index) => {
+                        const prevCat = previousMonthData.categories.find(c => c.category === cat.category);
+                        const prevAmount = prevCat ? prevCat.amount : 0;
+                        const diff = cat.amount - prevAmount;
+                        
+                        return (
+                            <View key={index} style={allStyles.categoryComparisonItem}>
+                                <Text style={allStyles.categoryComparisonName}>{cat.category}</Text>
+                                <View style={allStyles.categoryComparisonValues}>
+                                    <View style={allStyles.categoryComparisonColumn}>
+                                        <Text style={allStyles.categoryComparisonLabel}>Atual</Text>
+                                        <Text style={allStyles.categoryComparisonAmount}>R$ {formatCurrency(cat.amount)}</Text>
+                                    </View>
+                                    <View style={allStyles.categoryComparisonColumn}>
+                                        <Text style={allStyles.categoryComparisonLabel}>Anterior</Text>
+                                        <Text style={allStyles.categoryComparisonAmount}>R$ {formatCurrency(prevAmount)}</Text>
+                                    </View>
+                                    <View style={allStyles.categoryComparisonColumn}>
+                                        <Text style={allStyles.categoryComparisonLabel}>Diferença</Text>
+                                        <Text style={[
+                                            allStyles.categoryComparisonAmount,
+                                            { color: diff > 0 ? theme.colors.danger : diff < 0 ? theme.colors.success : theme.colors.textMuted }
+                                        ]}>
+                                            {diff > 0 ? '+' : ''}R$ {formatCurrency(Math.abs(diff))}
+                                        </Text>
+                                    </View>
                                 </View>
-                                <Text style={[styles.dueItemAmount, due.daysUntilDue <= 3 && { color: theme.colors.warning }]}>
-                                    R$ {formatCurrency(due.amount)}
-                                </Text>
+                            </View>
+                        );
+                    })}
+                </View>
+            </View>
+        );
+    };
+
+    const renderRankingTab = () => {
+        if (!selectedData || !periodStats) {
+            return (
+                <View style={styles.emptyContainer}>
+                    <Ionicons name="podium-outline" size={64} color={theme.colors.textMuted} />
+                    <Text style={styles.emptyText}>Sem dados para ranking</Text>
+                </View>
+            );
+        }
+
+        return (
+            <View>
+                {/* Top 5 maiores gastos */}
+                <View style={styles.card}>
+                    <View style={allStyles.rankingHeader}>
+                        <Ionicons name="trophy" size={24} color={theme.colors.warning} />
+                        <Text style={styles.cardTitle}>Top 5 Maiores Gastos</Text>
+                    </View>
+                    {periodStats.topExpenses.map((expense, index) => (
+                        <View key={index} style={allStyles.rankingItem}>
+                            <View style={allStyles.rankingBadge}>
+                                <Text style={allStyles.rankingPosition}>#{index + 1}</Text>
+                            </View>
+                            <View style={allStyles.rankingInfo}>
+                                <Text style={allStyles.rankingDescription}>{expense.description}</Text>
+                                <Text style={allStyles.rankingCategory}>{expense.category} • {expense.date}</Text>
+                            </View>
+                            <Text style={allStyles.rankingAmount}>R$ {formatCurrency(expense.amount)}</Text>
+                        </View>
+                    ))}
+                </View>
+
+                {/* Gastos por dia da semana */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Gastos por Dia da Semana</Text>
+                    {periodStats.dayOfWeekStats.length > 0 ? (
+                        periodStats.dayOfWeekStats.map((day, index) => {
+                            const maxTotal = periodStats.dayOfWeekStats[0].total;
+                            const percentage = (day.total / maxTotal) * 100;
+                            
+                            return (
+                                <View key={index} style={allStyles.dayStatItem}>
+                                    <Text style={allStyles.dayStatName}>{day.day}</Text>
+                                    <View style={allStyles.dayStatBar}>
+                                        <View style={[allStyles.dayStatFill, { width: `${percentage}%` }]} />
+                                    </View>
+                                    <View style={allStyles.dayStatValues}>
+                                        <Text style={allStyles.dayStatAmount}>R$ {formatCurrency(day.total)}</Text>
+                                        <Text style={allStyles.dayStatCount}>{day.count} compra(s)</Text>
+                                    </View>
+                                </View>
+                            );
+                        })
+                    ) : (
+                        <Text style={styles.emptyText}>Sem transações registradas</Text>
+                    )}
+                </View>
+
+                {/* Estatísticas gerais */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Estatísticas do Mês</Text>
+                    <View style={allStyles.statsGrid}>
+                        <View style={allStyles.statItem}>
+                            <Ionicons name="receipt-outline" size={24} color={theme.colors.primary} />
+                            <Text style={allStyles.statValue}>{selectedData.transactionCount}</Text>
+                            <Text style={allStyles.statLabel}>Transações</Text>
+                        </View>
+                        <View style={allStyles.statItem}>
+                            <Ionicons name="calendar-outline" size={24} color={theme.colors.primary} />
+                            <Text style={allStyles.statValue}>R$ {formatCurrency(selectedData.averageExpensePerDay)}</Text>
+                            <Text style={allStyles.statLabel}>Média/Dia</Text>
+                        </View>
+                        <View style={allStyles.statItem}>
+                            <Ionicons name="pricetags-outline" size={24} color={theme.colors.primary} />
+                            <Text style={allStyles.statValue}>{selectedData.categories.length}</Text>
+                            <Text style={allStyles.statLabel}>Categorias</Text>
+                        </View>
+                        <View style={allStyles.statItem}>
+                            <Ionicons name="card-outline" size={24} color={theme.colors.primary} />
+                            <Text style={allStyles.statValue}>{selectedData.cardExpenses.length}</Text>
+                            <Text style={allStyles.statLabel}>Cartões Usados</Text>
+                        </View>
+                    </View>
+                </View>
+            </View>
+        );
+    };
+
+    const renderScoreTab = () => {
+        if (!financialScore) {
+            return (
+                <View style={styles.emptyContainer}>
+                    <ActivityIndicator size="large" color={theme.colors.primary} />
+                </View>
+            );
+        }
+
+        const getScoreColor = (score: number) => {
+            if (score >= 80) return theme.colors.success;
+            if (score >= 60) return theme.colors.warning;
+            return theme.colors.danger;
+        };
+
+        const getScoreLabel = (score: number) => {
+            if (score >= 90) return 'Excelente';
+            if (score >= 80) return 'Muito Bom';
+            if (score >= 70) return 'Bom';
+            if (score >= 60) return 'Regular';
+            if (score >= 50) return 'Precisa Melhorar';
+            return 'Crítico';
+        };
+
+        return (
+            <View>
+                {/* Score principal */}
+                <View style={[styles.card, allStyles.scoreCard]}>
+                    <Text style={styles.cardTitle}>Saúde Financeira</Text>
+                    <View style={allStyles.scoreCircle}>
+                        <Text style={[allStyles.scoreValue, { color: getScoreColor(financialScore.score) }]}>
+                            {financialScore.score}
+                        </Text>
+                        <Text style={allStyles.scoreMax}>/100</Text>
+                    </View>
+                    <Text style={[allStyles.scoreLabel, { color: getScoreColor(financialScore.score) }]}>
+                        {getScoreLabel(financialScore.score)}
+                    </Text>
+                    <View style={styles.progressBarBg}>
+                        <View 
+                            style={[
+                                styles.progressBarFill, 
+                                { width: `${financialScore.score}%`, backgroundColor: getScoreColor(financialScore.score) }
+                            ]} 
+                        />
+                    </View>
+                </View>
+
+                {/* Breakdown do score */}
+                <View style={styles.card}>
+                    <Text style={styles.cardTitle}>Componentes do Score</Text>
+                    
+                    <View style={allStyles.scoreComponentItem}>
+                        <View style={allStyles.scoreComponentHeader}>
+                            <Ionicons name="wallet" size={20} color={theme.colors.primary} />
+                            <Text style={allStyles.scoreComponentName}>Economia</Text>
+                        </View>
+                        <Text style={allStyles.scoreComponentValue}>{financialScore.savingsScore}/30</Text>
+                        <View style={styles.progressBarBg}>
+                            <View 
+                                style={[
+                                    styles.progressBarFill, 
+                                    { width: `${(financialScore.savingsScore / 30) * 100}%`, backgroundColor: theme.colors.success }
+                                ]} 
+                            />
+                        </View>
+                    </View>
+
+                    <View style={allStyles.scoreComponentItem}>
+                        <View style={allStyles.scoreComponentHeader}>
+                            <Ionicons name="checkmark-circle" size={20} color={theme.colors.primary} />
+                            <Text style={allStyles.scoreComponentName}>Pagamentos em Dia</Text>
+                        </View>
+                        <Text style={allStyles.scoreComponentValue}>{financialScore.paymentScore}/30</Text>
+                        <View style={styles.progressBarBg}>
+                            <View 
+                                style={[
+                                    styles.progressBarFill, 
+                                    { width: `${(financialScore.paymentScore / 30) * 100}%`, backgroundColor: theme.colors.success }
+                                ]} 
+                            />
+                        </View>
+                    </View>
+
+                    <View style={allStyles.scoreComponentItem}>
+                        <View style={allStyles.scoreComponentHeader}>
+                            <Ionicons name="pie-chart" size={20} color={theme.colors.primary} />
+                            <Text style={allStyles.scoreComponentName}>Diversificação</Text>
+                        </View>
+                        <Text style={allStyles.scoreComponentValue}>{financialScore.diversificationScore}/20</Text>
+                        <View style={styles.progressBarBg}>
+                            <View 
+                                style={[
+                                    styles.progressBarFill, 
+                                    { width: `${(financialScore.diversificationScore / 20) * 100}%`, backgroundColor: theme.colors.success }
+                                ]} 
+                            />
+                        </View>
+                    </View>
+
+                    <View style={allStyles.scoreComponentItem}>
+                        <View style={allStyles.scoreComponentHeader}>
+                            <Ionicons name="card" size={20} color={theme.colors.primary} />
+                            <Text style={allStyles.scoreComponentName}>Uso de Crédito</Text>
+                        </View>
+                        <Text style={allStyles.scoreComponentValue}>{financialScore.creditUsageScore}/20</Text>
+                        <View style={styles.progressBarBg}>
+                            <View 
+                                style={[
+                                    styles.progressBarFill, 
+                                    { width: `${(financialScore.creditUsageScore / 20) * 100}%`, backgroundColor: theme.colors.success }
+                                ]} 
+                            />
+                        </View>
+                    </View>
+                </View>
+
+                {/* Recomendações */}
+                {financialScore.recommendations.length > 0 && (
+                    <View style={styles.card}>
+                        <View style={allStyles.recommendationsHeader}>
+                            <Ionicons name="bulb" size={24} color={theme.colors.warning} />
+                            <Text style={styles.cardTitle}>Recomendações</Text>
+                        </View>
+                        {financialScore.recommendations.map((rec, index) => (
+                            <View key={index} style={allStyles.recommendationItem}>
+                                <Ionicons name="chevron-forward" size={16} color={theme.colors.primary} />
+                                <Text style={allStyles.recommendationText}>{rec}</Text>
                             </View>
                         ))}
                     </View>
@@ -875,43 +1562,65 @@ export default function ChartsScreen() {
                 )}
 
                 {/* Tabs */}
-                <View style={styles.tabsContainer}>
-                    <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
-                        onPress={() => setActiveTab('overview')}
-                    >
-                        <Ionicons name="stats-chart" size={18} color={activeTab === 'overview' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>Resumo</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'categories' && styles.tabActive]}
-                        onPress={() => setActiveTab('categories')}
-                    >
-                        <Ionicons name="pie-chart" size={18} color={activeTab === 'categories' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
-                        onPress={() => setActiveTab('cards')}
-                    >
-                        <Ionicons name="card" size={18} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'dues' && styles.tabActive]}
-                        onPress={() => setActiveTab('dues')}
-                    >
-                        <Ionicons name="calendar" size={18} color={activeTab === 'dues' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'dues' && styles.tabTextActive]}>Vencimentos</Text>
-                    </TouchableOpacity>
-                </View>
+                <ScrollView 
+                    horizontal 
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={allStyles.tabsScrollContainer}
+                >
+                    <View style={styles.tabsContainer}>
+                        <TouchableOpacity 
+                            style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
+                            onPress={() => setActiveTab('overview')}
+                        >
+                            <Ionicons name="stats-chart" size={16} color={activeTab === 'overview' ? theme.colors.primary : theme.colors.textMuted} />
+                            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>Resumo</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.tab, activeTab === 'comparison' && styles.tabActive]}
+                            onPress={() => setActiveTab('comparison')}
+                        >
+                            <Ionicons name="git-compare" size={16} color={activeTab === 'comparison' ? theme.colors.primary : theme.colors.textMuted} />
+                            <Text style={[styles.tabText, activeTab === 'comparison' && styles.tabTextActive]}>Comparar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.tab, activeTab === 'categories' && styles.tabActive]}
+                            onPress={() => setActiveTab('categories')}
+                        >
+                            <Ionicons name="pie-chart" size={16} color={activeTab === 'categories' ? theme.colors.primary : theme.colors.textMuted} />
+                            <Text style={[styles.tabText, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.tab, activeTab === 'ranking' && styles.tabActive]}
+                            onPress={() => setActiveTab('ranking')}
+                        >
+                            <Ionicons name="podium" size={16} color={activeTab === 'ranking' ? theme.colors.primary : theme.colors.textMuted} />
+                            <Text style={[styles.tabText, activeTab === 'ranking' && styles.tabTextActive]}>Ranking</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
+                            onPress={() => setActiveTab('cards')}
+                        >
+                            <Ionicons name="card" size={16} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
+                            <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity 
+                            style={[styles.tab, activeTab === 'score' && styles.tabActive]}
+                            onPress={() => setActiveTab('score')}
+                        >
+                            <Ionicons name="trophy" size={16} color={activeTab === 'score' ? theme.colors.primary : theme.colors.textMuted} />
+                            <Text style={[styles.tabText, activeTab === 'score' && styles.tabTextActive]}>Score</Text>
+                        </TouchableOpacity>
+                    </View>
+                </ScrollView>
 
                 {/* Conteúdo da tab ativa */}
                 <View style={styles.tabContent}>
                     {activeTab === 'overview' && renderOverviewTab()}
+                    {activeTab === 'comparison' && renderComparisonTab()}
                     {activeTab === 'categories' && renderCategoriesTab()}
+                    {activeTab === 'ranking' && renderRankingTab()}
                     {activeTab === 'cards' && renderCardsTab()}
-                    {activeTab === 'dues' && renderDuesTab()}
+                    {activeTab === 'score' && renderScoreTab()}
                 </View>
             </ScrollView>
         </View>

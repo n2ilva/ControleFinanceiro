@@ -24,18 +24,6 @@ if (typeof window !== 'undefined') {
 
   // Verificar periodicamente (comentado por padrão - descomente se quiser usar)
   // setInterval(detectDevTools, 1000);
-
-  // Mensagem de aviso no console
-  console.log(
-    '%c⚠️ ATENÇÃO!',
-    'color: red; font-size: 40px; font-weight: bold;'
-  );
-  console.log(
-    '%cEste é um recurso do navegador destinado a desenvolvedores.\n' +
-    'Se alguém pediu para você copiar e colar algo aqui, é uma fraude.\n' +
-    'Isso pode comprometer sua conta e dados pessoais.',
-    'font-size: 16px;'
-  );
 }
 
 export {};

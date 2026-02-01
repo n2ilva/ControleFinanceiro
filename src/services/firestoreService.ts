@@ -45,62 +45,10 @@ export const FirestoreService = {
         }),
       };
 
-      // Se não for recorrente, comportamento padrão simples
-      if (!transaction.isRecurring) {
-        const docRef = await addDoc(transactionsRef, transactionData);
-        return docRef.id;
-      }
-
-      // Se for recorrente, criar para os próximos 12 meses em lote
-      const batch = writeBatch(db);
-
-      // Gerar ID de recorrência para agrupar todas
-      const recurrenceId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-      const originalAmount = transaction.amount;
-      const baseDate = new Date(transaction.date);
-
-      // ID da primeira transação (mês atual) para retorno
-      const mainDocRef = doc(transactionsRef);
-      const mainId = mainDocRef.id;
-
-      // Loop para criar 12 transações (atual + 11 futuras)
-      for (let i = 0; i < 12; i++) {
-        // Calcular data para o mês i
-        let newDate = new Date(baseDate);
-        newDate.setMonth(baseDate.getMonth() + i);
-
-        // Ajuste fino: Se o dia mudou (ex: era 31 e virou 1/2 ou 3), volta para o último dia do mês anterior
-        if (newDate.getDate() !== baseDate.getDate()) {
-          newDate.setDate(0); // Último dia do mês anterior
-        }
-
-        // Se for a primeira (atual), usa o ID gerado para retorno. As outras, ID auto-gerado.
-        const ref = i === 0 ? mainDocRef : doc(transactionsRef);
-
-        const currentTransactionData = {
-          ...transactionData,
-          recurrenceId,
-          originalAmount,
-          id: ref.id,
-          date: Timestamp.fromDate(newDate),
-          // Ajustar data de vencimento se existir
-          ...(transaction.dueDate &&
-            (() => {
-              const baseDueDate = new Date(transaction.dueDate);
-              let newDueDate = new Date(baseDueDate);
-              newDueDate.setMonth(baseDueDate.getMonth() + i);
-              if (newDueDate.getDate() !== baseDueDate.getDate()) {
-                newDueDate.setDate(0);
-              }
-              return { dueDate: Timestamp.fromDate(newDueDate) };
-            })()),
-        };
-
-        batch.set(ref, currentTransactionData);
-      }
-
-      await batch.commit();
-      return mainId;
+      // Adicionar transação normalmente (não criar automaticamente 12 meses)
+      // A lógica de recorrência agora é tratada na tela de adicionar
+      const docRef = await addDoc(transactionsRef, transactionData);
+      return docRef.id;
     } catch (error) {
       console.error("Error adding transaction:", error);
       throw error;
@@ -138,6 +86,113 @@ export const FirestoreService = {
       await deleteDoc(docRef);
     } catch (error) {
       console.error("Error deleting transaction:", error);
+      throw error;
+    }
+  },
+
+  // Cancelar recorrência - remove transações futuras e marca a atual como não recorrente
+  async cancelRecurrence(
+    transactionId: string,
+    recurrenceId: string,
+    currentTransactionDate: string,
+  ): Promise<number> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const activeGroupId = await GroupService.getActiveGroupId();
+      const currentDate = new Date(currentTransactionDate);
+
+      // Buscar todas as transações com o mesmo recurrenceId
+      let q;
+      if (activeGroupId) {
+        q = query(
+          this.getTransactionsCollection(),
+          where("groupId", "==", activeGroupId),
+          where("recurrenceId", "==", recurrenceId),
+        );
+      } else {
+        q = query(
+          this.getTransactionsCollection(),
+          where("userId", "==", user.uid),
+          where("recurrenceId", "==", recurrenceId),
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      let deletedCount = 0;
+
+      querySnapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const transactionDate = data.date.toDate();
+
+        // Se a data for APÓS o mês atual, deletar
+        if (transactionDate > currentDate) {
+          batch.delete(docSnapshot.ref);
+          deletedCount++;
+        }
+        // Se for a transação atual, marcar como não recorrente
+        else if (docSnapshot.id === transactionId) {
+          batch.update(docSnapshot.ref, { isRecurring: false });
+        }
+      });
+
+      await batch.commit();
+      return deletedCount;
+    } catch (error) {
+      console.error("Error canceling recurrence:", error);
+      throw error;
+    }
+  },
+
+  // Excluir transações recorrentes a partir de uma data (inclusive)
+  async deleteRecurrenceFromDate(
+    recurrenceId: string,
+    fromDate: string,
+  ): Promise<number> {
+    try {
+      const user = AuthService.getCurrentUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const activeGroupId = await GroupService.getActiveGroupId();
+      const fromDateObj = new Date(fromDate);
+
+      // Buscar todas as transações com o mesmo recurrenceId
+      let q;
+      if (activeGroupId) {
+        q = query(
+          this.getTransactionsCollection(),
+          where("groupId", "==", activeGroupId),
+          where("recurrenceId", "==", recurrenceId),
+        );
+      } else {
+        q = query(
+          this.getTransactionsCollection(),
+          where("userId", "==", user.uid),
+          where("recurrenceId", "==", recurrenceId),
+        );
+      }
+
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db);
+      let deletedCount = 0;
+
+      querySnapshot.forEach((docSnapshot) => {
+        const data = docSnapshot.data();
+        const transactionDate = data.date.toDate();
+
+        // Se a data for igual ou APÓS a data informada, deletar
+        if (transactionDate >= fromDateObj) {
+          batch.delete(docSnapshot.ref);
+          deletedCount++;
+        }
+      });
+
+      await batch.commit();
+      return deletedCount;
+    } catch (error) {
+      console.error("Error deleting recurrence from date:", error);
       throw error;
     }
   },
@@ -188,7 +243,9 @@ export const FirestoreService = {
           ...(data.cardName !== undefined && { cardName: data.cardName }),
           ...(data.cardType !== undefined && { cardType: data.cardType }),
           ...(data.recurrenceId && { recurrenceId: data.recurrenceId }),
-          ...(data.originalAmount && { originalAmount: data.originalAmount }),
+          ...(data.originalAmount !== undefined && { originalAmount: data.originalAmount }),
+          ...(data.installments !== undefined && { installments: data.installments }),
+          ...(data.installmentNumber !== undefined && { installmentNumber: data.installmentNumber }),
         });
       });
 
@@ -299,6 +356,11 @@ export const FirestoreService = {
         // Evitar duplicar se já foi gerada pela lógica de 12 meses (verificar se já existe no destino??)
         // Por simplicidade, assumir que essa função é chamada explicitamente pelo usuário
 
+        // Calcular data segura para o mês destino
+        const originalDate = new Date(t.date);
+        const lastDayOfToMonth = new Date(toYear, toMonth + 1, 0).getDate();
+        const safeDay = Math.min(originalDate.getDate(), lastDayOfToMonth);
+
         const newTransaction: Omit<Transaction, "id" | "userId"> = {
           description: t.description,
           amount: t.amount,
@@ -306,19 +368,16 @@ export const FirestoreService = {
           isRecurring: t.isRecurring,
           isPaid: false,
           type: t.type,
-          date: new Date(
-            toYear,
-            toMonth,
-            new Date(t.date).getDate(),
-          ).toISOString(),
+          date: new Date(toYear, toMonth, safeDay).toISOString(),
           createdAt: new Date().toISOString(),
           ...(t.isSalary && { isSalary: t.isSalary }),
           ...(t.dueDate && {
-            dueDate: new Date(
-              toYear,
-              toMonth,
-              new Date(t.dueDate).getDate(),
-            ).toISOString(),
+            dueDate: (() => {
+              const originalDueDate = new Date(t.dueDate);
+              const lastDayDue = new Date(toYear, toMonth + 1, 0).getDate();
+              const safeDueDay = Math.min(originalDueDate.getDate(), lastDayDue);
+              return new Date(toYear, toMonth, safeDueDay).toISOString();
+            })(),
           }),
         };
 

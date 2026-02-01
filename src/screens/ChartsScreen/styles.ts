@@ -283,6 +283,27 @@ const styles = StyleSheet.create({
         fontWeight: theme.fontWeight.bold,
         color: theme.colors.text,
     },
+    cardSection: {
+        marginTop: theme.spacing.md,
+    },
+    cardSectionHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        marginBottom: theme.spacing.md,
+        paddingHorizontal: theme.spacing.sm,
+    },
+    cardSectionTitle: {
+        fontSize: theme.fontSize.md,
+        fontWeight: theme.fontWeight.semibold,
+        color: theme.colors.text,
+        flex: 1,
+    },
+    cardSectionTotal: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: theme.fontWeight.semibold,
+        color: theme.colors.textSecondary,
+    },
     
     // Due Items
     dueSection: {

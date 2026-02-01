@@ -7,23 +7,25 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background,
     },
     header: {
-        padding: theme.spacing.md,
+        paddingHorizontal: theme.spacing.md,
+        paddingTop: theme.spacing.sm,
+        paddingBottom: theme.spacing.xs,
     },
     balanceCard: {
         backgroundColor: theme.colors.backgroundCard,
         borderRadius: theme.borderRadius.lg,
-        padding: theme.spacing.md,
+        padding: theme.spacing.sm,
         ...theme.shadows.md,
     },
     balanceLabel: {
         fontSize: theme.fontSize.xs,
         color: theme.colors.textSecondary,
-        marginBottom: theme.spacing.xs,
+        marginBottom: 2,
     },
     balanceAmount: {
-        fontSize: theme.fontSize.xxl,
+        fontSize: theme.fontSize.xl,
         fontWeight: theme.fontWeight.bold,
-        marginBottom: theme.spacing.sm,
+        marginBottom: theme.spacing.xs,
     },
     positiveBalance: {
         color: theme.colors.success,
@@ -34,15 +36,15 @@ const styles = StyleSheet.create({
     balanceDetails: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: theme.spacing.sm,
-        paddingTop: theme.spacing.sm,
+        marginTop: theme.spacing.xs,
+        paddingTop: theme.spacing.xs,
         borderTopWidth: 1,
         borderTopColor: theme.colors.border,
     },
     balanceItem: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: theme.spacing.sm,
+        gap: theme.spacing.xs,
     },
     balanceItemText: {
         gap: 2,
@@ -52,7 +54,7 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
     },
     balanceItemValue: {
-        fontSize: theme.fontSize.md,
+        fontSize: theme.fontSize.sm,
         color: theme.colors.text,
         fontWeight: theme.fontWeight.semibold,
     },
@@ -61,13 +63,13 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
         paddingHorizontal: theme.spacing.md,
-        paddingVertical: theme.spacing.md,
+        paddingVertical: theme.spacing.xs,
     },
     monthButton: {
         padding: theme.spacing.sm,
     },
     monthText: {
-        fontSize: theme.fontSize.lg,
+        fontSize: theme.fontSize.md,
         fontWeight: theme.fontWeight.semibold,
         color: theme.colors.text,
     },
@@ -170,6 +172,22 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize.xs,
         color: theme.colors.primary,
         fontWeight: theme.fontWeight.medium,
+    },
+    installmentBadge: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        backgroundColor: theme.colors.warningLight + '30',
+        paddingHorizontal: theme.spacing.sm,
+        paddingVertical: 2,
+        borderRadius: theme.borderRadius.sm,
+        borderWidth: 1,
+        borderColor: theme.colors.warning,
+    },
+    installmentText: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.warning,
+        fontWeight: theme.fontWeight.bold,
     },
     dueDateBadge: {
         flexDirection: 'row',
@@ -350,7 +368,7 @@ const styles = StyleSheet.create({
     filterContainer: {
         flexDirection: 'row',
         paddingHorizontal: theme.spacing.md,
-        paddingBottom: theme.spacing.md,
+        paddingBottom: theme.spacing.xs,
         gap: theme.spacing.sm,
     },
     filterButton: {
@@ -359,7 +377,8 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        paddingVertical: 8,
+        paddingVertical: 6,
+        paddingHorizontal: 6,
         borderRadius: 20,
         backgroundColor: theme.colors.backgroundCard,
         borderWidth: 1,
@@ -370,9 +389,10 @@ const styles = StyleSheet.create({
         borderColor: theme.colors.primary,
     },
     filterText: {
-        fontSize: theme.fontSize.sm,
+        fontSize: theme.fontSize.xs,
         color: theme.colors.textSecondary,
         fontWeight: theme.fontWeight.medium,
+        flexShrink: 1,
     },
     filterTextActive: {
         color: theme.colors.white,

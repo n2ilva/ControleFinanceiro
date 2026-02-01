@@ -12,13 +12,15 @@ import HomeScreen from '../screens/HomeScreen';
 import AddTransactionScreen from '../screens/AddTransactionScreen';
 import EditTransactionScreen from '../screens/EditTransactionScreen';
 import ChartsScreen from '../screens/ChartsScreen';
-import QRScannerScreen from '../screens/QRScannerScreen';
+
 import GroupScreen from '../screens/GroupScreen';
 import CreditCardsScreen from '../screens/CreditCardsScreen';
 import SalariesScreen from '../screens/SalariesScreen';
 import AddSalaryScreen from '../screens/AddSalaryScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
+import CardDetailsScreen from '../screens/CardDetailsScreen';
+import CardMonthDetailsScreen from '../screens/CardMonthDetailsScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -187,11 +189,26 @@ function AppStack() {
                     presentation: 'modal',
                 }}
             />
+
             <Stack.Screen
-                name="QRScanner"
-                component={QRScannerScreen}
+                name="CardDetails"
+                component={CardDetailsScreen}
                 options={{
                     headerShown: false,
+                }}
+            />
+            <Stack.Screen
+                name="CardMonthDetails"
+                component={CardMonthDetailsScreen}
+                options={{
+                    headerShown: false,
+                }}
+            />
+            <Stack.Screen
+                name="AddTransaction"
+                component={AddTransactionScreen}
+                options={{
+                    title: 'Nova Transação',
                     presentation: 'modal',
                 }}
             />

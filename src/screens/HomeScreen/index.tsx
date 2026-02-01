@@ -117,7 +117,17 @@ export default function HomeScreen({ navigation }: any) {
                                         />
                                     </View>
                                 )}
-                                {item.isRecurring && (
+                                {/* Badge de parcelas - prioridade sobre recorrente */}
+                                {item.installmentNumber && item.installments && (
+                                    <View style={styles.installmentBadge}>
+                                        <Ionicons name="layers-outline" size={12} color={theme.colors.warning} />
+                                        <Text style={styles.installmentText}>
+                                            {item.installmentNumber}/{item.installments}
+                                        </Text>
+                                    </View>
+                                )}
+                                {/* Badge de recorrente - só mostra se não for parcelado */}
+                                {item.isRecurring && !item.installmentNumber && (
                                     <View style={styles.recurringBadge}>
                                         <Ionicons name="repeat" size={12} color={theme.colors.primary} />
                                         <Text style={styles.recurringText}>Recorrente</Text>
@@ -213,8 +223,8 @@ export default function HomeScreen({ navigation }: any) {
                                 </Text>
                             )}
 
-                            {/* Botão Pagar/Pago para despesas */}
-                            {item.type === 'expense' && (
+                            {/* Botão Pagar/Pago para despesas (não exibir para compras em cartão de crédito) */}
+                            {item.type === 'expense' && !(item.cardId && item.cardType === 'credit') && (
                                 <TouchableOpacity
                                     style={[styles.paidBadgeButton, item.isPaid && styles.paidBadgeButtonActive]}
                                     onPress={() => togglePaid(item)}
@@ -279,7 +289,7 @@ export default function HomeScreen({ navigation }: any) {
 
                     <View style={styles.balanceDetails}>
                         <View style={styles.balanceItem}>
-                            <Ionicons name="arrow-down-circle" size={20} color={theme.colors.success} />
+                            <Ionicons name="arrow-down-circle" size={16} color={theme.colors.success} />
                             <View style={styles.balanceItemText}>
                                 <Text style={styles.balanceItemLabel}>Receitas</Text>
                                 <Text style={styles.balanceItemValue}>R$ {formatCurrency(monthlyData.totalIncome)}</Text>
@@ -287,7 +297,7 @@ export default function HomeScreen({ navigation }: any) {
                         </View>
 
                         <View style={styles.balanceItem}>
-                            <Ionicons name="arrow-up-circle" size={20} color={theme.colors.danger} />
+                            <Ionicons name="arrow-up-circle" size={16} color={theme.colors.danger} />
                             <View style={styles.balanceItemText}>
                                 <Text style={styles.balanceItemLabel}>Despesas</Text>
                                 <Text style={styles.balanceItemValue}>R$ {formatCurrency(monthlyData.totalExpenses)}</Text>
@@ -413,7 +423,7 @@ export default function HomeScreen({ navigation }: any) {
                             style={styles.menuItem}
                             onPress={() => {
                                 setAddMenuVisible(false);
-                                navigation.navigate('AddExpense');
+                                navigation.navigate('AddExpense', { month: currentMonth, year: currentYear });
                             }}
                         >
                             <Ionicons name="arrow-up-circle" size={20} color={theme.colors.danger} />
@@ -424,33 +434,11 @@ export default function HomeScreen({ navigation }: any) {
                             style={styles.menuItem}
                             onPress={() => {
                                 setAddMenuVisible(false);
-                                navigation.navigate('AddIncome');
+                                navigation.navigate('AddIncome', { month: currentMonth, year: currentYear });
                             }}
                         >
                             <Ionicons name="arrow-down-circle" size={20} color={theme.colors.success} />
                             <Text style={styles.menuItemText}>Receitas</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={() => {
-                                setAddMenuVisible(false);
-                                navigation.navigate('AddSalary');
-                            }}
-                        >
-                            <Ionicons name="cash" size={20} color={theme.colors.primary} />
-                            <Text style={styles.menuItemText}>Salário</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                            style={styles.menuItem}
-                            onPress={() => {
-                                setAddMenuVisible(false);
-                                navigation.navigate('MainTabs', { screen: 'CreditCards' });
-                            }}
-                        >
-                            <Ionicons name="card" size={20} color={theme.colors.primary} />
-                            <Text style={styles.menuItemText}>Cartões</Text>
                         </TouchableOpacity>
                     </View>
                 </Pressable>

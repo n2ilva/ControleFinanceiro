@@ -52,6 +52,8 @@ export const theme = {
       outros: '#64748B',
       // Categorias de receita
       salario: '#10B981',
+      decimoTerceiro: '#34D399',
+      ferias: '#FBBF24',
       deposito: '#3B82F6',
       extra: '#F59E0B',
       freelance: '#22C55E',
