@@ -6,16 +6,43 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA1Ki7azHJIWYe_XSnhuZg4Q11QX9cL640",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "controle-financeiro-6ba4b.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "controle-financeiro-6ba4b",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "controle-financeiro-6ba4b.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1016960353822",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1016960353822:android:4d5e3527d05343a48c100f",
+        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-PGRVLSD7P1"
+      }
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA1Ki7azHJIWYe_XSnhuZg4Q11QX9cL640",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "controle-financeiro-6ba4b.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "controle-financeiro-6ba4b",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "controle-financeiro-6ba4b.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1016960353822",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1016960353822:android:4d5e3527d05343a48c100f",
+        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-PGRVLSD7P1"
       }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyA1Ki7azHJIWYe_XSnhuZg4Q11QX9cL640",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "controle-financeiro-6ba4b.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "controle-financeiro-6ba4b",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "controle-financeiro-6ba4b.firebasestorage.app",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "1016960353822",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:1016960353822:android:4d5e3527d05343a48c100f",
+        "EXPO_PUBLIC_FIREBASE_MEASUREMENT_ID": "G-PGRVLSD7P1"
+      }
     }
   },
   "submit": {

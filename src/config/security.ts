@@ -1,5 +1,7 @@
-// Proteção contra acesso via console do navegador
-if (typeof window !== 'undefined') {
+import { Platform } from 'react-native';
+
+// Proteção contra acesso via console do navegador (somente web)
+if (Platform.OS === 'web' && typeof window !== 'undefined') {
   // Desabilitar console em produção
   if (process.env.NODE_ENV === 'production') {
     const noop = () => {};
