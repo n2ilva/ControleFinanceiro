@@ -102,12 +102,12 @@ Este projeto implementa diversas camadas de segurança:
 
 ### GitHub Pages
 
-O projeto está configurado para deploy automático no GitHub Pages:
+O projeto está configurado para deploy automático no GitHub Pages via GitHub Actions:
 
-1. Configure o GitHub Pages para usar a pasta `/docs`
-2. Execute o build: `npm run build:web`
-3. Faça commit e push dos arquivos
-4. Acesse: `https://seuusuario.github.io/controle-financeiro`
+1. No GitHub, abra **Settings > Pages**
+2. Em **Build and deployment**, selecione **Source: GitHub Actions**
+3. Faça push na branch `main`
+4. Acesse: `https://seuusuario.github.io/controlefinanceiro`
 
 ## 🎨 Design
 
