@@ -1,0 +1,54 @@
+{
+  "expo": {
+    "name": "Controle Financeiro",
+    "slug": "controle-financeiro",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/controlefinanceiro.png",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/controlefinanceiro.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0F172A"
+    },
+    "ios": {
+      "bundleIdentifier": "com.seuusuario.controlefinanceiro",
+      "supportsTablet": true
+    },
+    "android": {
+      "package": "com.n2ilva.controlefinanceiro",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/controlefinanceiro.png",
+        "backgroundColor": "#0F172A"
+      }
+    },
+    "plugins": [
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Permitir que o App acesse a câmera para ler QR Codes de Notas Fiscais."
+        }
+      ],
+      "expo-font"
+    ],
+    "web": {
+      "favicon": "./assets/controlefinanceiro.png",
+      "bundler": "metro"
+    },
+    "extra": {
+      "firebase": {
+        "apiKey": "AIzaSyA1Ki7azHJIWYe_XSnhuZg4Q11QX9cL640",
+        "authDomain": "controle-financeiro-6ba4b.firebaseapp.com",
+        "projectId": "controle-financeiro-6ba4b",
+        "storageBucket": "controle-financeiro-6ba4b.firebasestorage.app",
+        "messagingSenderId": "1016960353822",
+        "appId": "1:1016960353822:android:4d5e3527d05343a48c100f"
+      },
+      "eas": {
+        "projectId": "38f77e21-2a2b-4fe8-8c49-f0c67c13d767"
+      }
+    }
+  }
+}
