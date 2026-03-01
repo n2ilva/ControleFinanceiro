@@ -1392,7 +1392,13 @@ export default function ChartsScreen({ navigation }: any) {
             );
         }
 
-        const savingsRateDiff = selectedData.savingsRate - previousMonthData.savingsRate;
+        const currentSavingsRate = selectedData.totalIncome > 0
+            ? (selectedData.balance / selectedData.totalIncome) * 100
+            : 0;
+        const previousSavingsRate = previousMonthData.totalIncome > 0
+            ? (previousMonthData.balance / previousMonthData.totalIncome) * 100
+            : 0;
+        const savingsRateDiff = currentSavingsRate - previousSavingsRate;
         const savingsRateDiffColor = savingsRateDiff > 0 ? theme.colors.success : savingsRateDiff < 0 ? theme.colors.danger : theme.colors.textMuted;
         const savingsRateDiffSignal = savingsRateDiff > 0 ? '+' : savingsRateDiff < 0 ? '-' : '';
         const savingsRateDiffStatus = savingsRateDiff > 0 ? 'positivo' : savingsRateDiff < 0 ? 'negativo' : 'estável';
