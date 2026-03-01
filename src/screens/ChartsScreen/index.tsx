@@ -24,6 +24,7 @@ import { PageHeader } from '../../components';
 const allStyles = { ...styles, ...additionalStyles };
 
 const screenWidth = Dimensions.get('window').width;
+const isCompactTabs = screenWidth <= 430;
 
 const formatCurrency = (value: number): string => {
     return value.toLocaleString('pt-BR', {
@@ -1680,32 +1681,32 @@ export default function ChartsScreen({ navigation }: any) {
                 {/* Tabs */}
                 <View style={styles.tabsContainer}>
                     <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
+                        style={[styles.tab, isCompactTabs && styles.tabCompact, activeTab === 'overview' && styles.tabActive]}
                         onPress={() => setActiveTab('overview')}
                     >
-                        <Ionicons name="stats-chart" size={16} color={activeTab === 'overview' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>Resumo</Text>
+                        <Ionicons name="stats-chart" size={isCompactTabs ? 14 : 16} color={activeTab === 'overview' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text numberOfLines={1} style={[styles.tabText, isCompactTabs && styles.tabTextCompact, activeTab === 'overview' && styles.tabTextActive]}>Resumo</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'comparison' && styles.tabActive]}
+                        style={[styles.tab, isCompactTabs && styles.tabCompact, activeTab === 'comparison' && styles.tabActive]}
                         onPress={() => setActiveTab('comparison')}
                     >
-                        <Ionicons name="git-compare" size={16} color={activeTab === 'comparison' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'comparison' && styles.tabTextActive]}>Comparar</Text>
+                        <Ionicons name="git-compare" size={isCompactTabs ? 14 : 16} color={activeTab === 'comparison' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text numberOfLines={1} style={[styles.tabText, isCompactTabs && styles.tabTextCompact, activeTab === 'comparison' && styles.tabTextActive]}>Comparar</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'categories' && styles.tabActive]}
+                        style={[styles.tab, isCompactTabs && styles.tabCompact, activeTab === 'categories' && styles.tabActive]}
                         onPress={() => setActiveTab('categories')}
                     >
-                        <Ionicons name="pie-chart" size={16} color={activeTab === 'categories' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
+                        <Ionicons name="pie-chart" size={isCompactTabs ? 14 : 16} color={activeTab === 'categories' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text numberOfLines={1} style={[styles.tabText, isCompactTabs && styles.tabTextCompact, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
+                        style={[styles.tab, isCompactTabs && styles.tabCompact, activeTab === 'cards' && styles.tabActive]}
                         onPress={() => setActiveTab('cards')}
                     >
-                        <Ionicons name="card" size={16} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
+                        <Ionicons name="card" size={isCompactTabs ? 14 : 16} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text numberOfLines={1} style={[styles.tabText, isCompactTabs && styles.tabTextCompact, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
                     </TouchableOpacity>
                 </View>
 

@@ -195,6 +195,12 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.sm,
         gap: 4,
     },
+    tabCompact: {
+        minHeight: 40,
+        paddingVertical: theme.spacing.xs,
+        paddingHorizontal: 2,
+        gap: 2,
+    },
     tabActive: {
         backgroundColor: theme.colors.primary + '15',
     },
@@ -202,6 +208,9 @@ const styles = StyleSheet.create({
         fontSize: theme.fontSize.xs,
         color: theme.colors.textMuted,
         fontWeight: theme.fontWeight.medium,
+    },
+    tabTextCompact: {
+        fontSize: 10,
     },
     tabTextActive: {
         color: theme.colors.primary,
