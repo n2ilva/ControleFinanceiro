@@ -6,6 +6,7 @@ import {
     Dimensions,
     ActivityIndicator,
     TouchableOpacity,
+    Modal,
 } from 'react-native';
 import { LineChart, PieChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
@@ -36,6 +37,20 @@ interface Insight {
     title: string;
     message: string;
     icon: any;
+    actionableType?: 'subscriptions' | 'impulse' | 'overdue' | 'dueSoon' | 'credit';
+}
+
+interface InsightDetailItem {
+    id: string;
+    title: string;
+    subtitle: string;
+    amount: number;
+}
+
+interface InsightDetailState {
+    title: string;
+    subtitle: string;
+    items: InsightDetailItem[];
 }
 
 interface CardExpense {
@@ -159,6 +174,7 @@ export default function ChartsScreen({ navigation }: any) {
         income: [] as number[],
     });
     const [insights, setInsights] = useState<Insight[]>([]);
+    const [insightDetail, setInsightDetail] = useState<InsightDetailState | null>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'cards' | 'dues' | 'comparison' | 'ranking' | 'score'>('overview');
     const [previousMonthData, setPreviousMonthData] = useState<MonthSummary | null>(null);
     const [monthComparison, setMonthComparison] = useState<MonthComparison | null>(null);
@@ -583,7 +599,8 @@ export default function ChartsScreen({ navigation }: any) {
                 type: 'info',
                 title: '💡 Revise Assinaturas',
                 message: `R$ ${formatCurrency(totalSubs)} em assinaturas. Cancele as que não usa frequentemente.`,
-                icon: 'refresh'
+                icon: 'refresh',
+                actionableType: 'subscriptions',
             });
         }
 
@@ -614,7 +631,8 @@ export default function ChartsScreen({ navigation }: any) {
                 type: 'warning',
                 title: '💡 Compras por Impulso',
                 message: `${smallPurchases.length} compras abaixo de R$50 totalizaram R$ ${formatCurrency(totalSmall)}. Pequenos gastos somam!`,
-                icon: 'cart'
+                icon: 'cart',
+                actionableType: 'impulse',
             });
         }
 
@@ -678,7 +696,8 @@ export default function ChartsScreen({ navigation }: any) {
                 type: 'danger',
                 title: `${data.overdueDues.length} Conta(s) Atrasada(s)`,
                 message: `Total de R$ ${formatCurrency(totalOverdue)} em atraso.`,
-                icon: 'warning'
+                icon: 'warning',
+                actionableType: 'overdue',
             });
         }
 
@@ -690,7 +709,8 @@ export default function ChartsScreen({ navigation }: any) {
                 type: 'warning',
                 title: `${dueSoon.length} Conta(s) Vencendo`,
                 message: `R$ ${formatCurrency(totalDueSoon)} vencem em 7 dias.`,
-                icon: 'time'
+                icon: 'time',
+                actionableType: 'dueSoon',
             });
         }
 
@@ -700,7 +720,8 @@ export default function ChartsScreen({ navigation }: any) {
                 type: 'info',
                 title: 'Gastos no Crédito',
                 message: `R$ ${formatCurrency(creditTotal)} no cartão de crédito.`,
-                icon: 'card'
+                icon: 'card',
+                actionableType: 'credit',
             });
         }
 
@@ -864,14 +885,152 @@ export default function ChartsScreen({ navigation }: any) {
             case 'info': iconColor = theme.colors.primary; break;
         }
 
+        const openInsightDetail = (selectedInsight: Insight) => {
+            if (!selectedData || !selectedInsight.actionableType) {
+                return;
+            }
+
+            if (selectedInsight.actionableType === 'subscriptions') {
+                const subscriptionKeywords = ['assinatura', 'streaming', 'netflix', 'spotify', 'academia', 'mensalidade'];
+                const subscriptionTransactions = selectedData.transactions.filter((transaction) => {
+                    if (transaction.type !== 'expense') return false;
+                    const normalizedCategory = transaction.category.toLowerCase();
+                    const normalizedDescription = transaction.description.toLowerCase();
+                    return subscriptionKeywords.some((keyword) =>
+                        normalizedCategory.includes(keyword) || normalizedDescription.includes(keyword)
+                    );
+                });
+
+                const grouped = new Map<string, InsightDetailItem>();
+                subscriptionTransactions.forEach((transaction) => {
+                    const key = (transaction.description || transaction.category).trim().toLowerCase();
+                    const existing = grouped.get(key);
+                    if (existing) {
+                        existing.amount += transaction.amount;
+                    } else {
+                        grouped.set(key, {
+                            id: transaction.id,
+                            title: transaction.description || transaction.category,
+                            subtitle: transaction.category,
+                            amount: transaction.amount,
+                        });
+                    }
+                });
+
+                const items = Array.from(grouped.values()).sort((a, b) => b.amount - a.amount);
+                const total = items.reduce((sum, item) => sum + item.amount, 0);
+
+                setInsightDetail({
+                    title: 'Assinaturas para revisar',
+                    subtitle: `Total identificado: R$ ${formatCurrency(total)} (${items.length} item(ns))`,
+                    items,
+                });
+                return;
+            }
+
+            if (selectedInsight.actionableType === 'impulse') {
+                const impulseTransactions = selectedData.transactions
+                    .filter((transaction) => transaction.type === 'expense' && transaction.amount < 50)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map((transaction) => ({
+                        id: transaction.id,
+                        title: transaction.description,
+                        subtitle: `${new Date(transaction.date).toLocaleDateString('pt-BR')} • ${transaction.category}`,
+                        amount: transaction.amount,
+                    }));
+
+                const total = impulseTransactions.reduce((sum, item) => sum + item.amount, 0);
+
+                setInsightDetail({
+                    title: 'Compras por impulso',
+                    subtitle: `Total identificado: R$ ${formatCurrency(total)} (${impulseTransactions.length} compra(s))`,
+                    items: impulseTransactions,
+                });
+                return;
+            }
+
+            if (selectedInsight.actionableType === 'overdue') {
+                const overdueItems = selectedData.overdueDues
+                    .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
+                    .map((dueItem) => ({
+                        id: dueItem.id,
+                        title: dueItem.description,
+                        subtitle: `Venceu em ${new Date(dueItem.dueDate).toLocaleDateString('pt-BR')}`,
+                        amount: dueItem.amount,
+                    }));
+
+                const total = overdueItems.reduce((sum, item) => sum + item.amount, 0);
+
+                setInsightDetail({
+                    title: 'Contas atrasadas',
+                    subtitle: `Total em atraso: R$ ${formatCurrency(total)} (${overdueItems.length} conta(s))`,
+                    items: overdueItems,
+                });
+                return;
+            }
+
+            if (selectedInsight.actionableType === 'dueSoon') {
+                const dueSoonItems = selectedData.upcomingDues
+                    .filter((dueItem) => dueItem.daysUntilDue <= 7 && dueItem.daysUntilDue >= 0)
+                    .sort((a, b) => a.daysUntilDue - b.daysUntilDue)
+                    .map((dueItem) => ({
+                        id: dueItem.id,
+                        title: dueItem.description,
+                        subtitle: `Vence em ${new Date(dueItem.dueDate).toLocaleDateString('pt-BR')} (${dueItem.daysUntilDue} dia(s))`,
+                        amount: dueItem.amount,
+                    }));
+
+                const total = dueSoonItems.reduce((sum, item) => sum + item.amount, 0);
+
+                setInsightDetail({
+                    title: 'Contas vencendo em breve',
+                    subtitle: `Total a vencer: R$ ${formatCurrency(total)} (${dueSoonItems.length} conta(s))`,
+                    items: dueSoonItems,
+                });
+                return;
+            }
+
+            if (selectedInsight.actionableType === 'credit') {
+                const creditItems = selectedData.cardExpenses
+                    .filter((cardExpense) => cardExpense.cardType === 'credit')
+                    .sort((a, b) => b.total - a.total)
+                    .map((cardExpense) => ({
+                        id: cardExpense.cardId,
+                        title: cardExpense.cardName,
+                        subtitle: `${cardExpense.count} compra(s) no crédito`,
+                        amount: cardExpense.total,
+                    }));
+
+                const total = creditItems.reduce((sum, item) => sum + item.amount, 0);
+
+                setInsightDetail({
+                    title: 'Gastos no cartão de crédito',
+                    subtitle: `Total no crédito: R$ ${formatCurrency(total)} (${creditItems.length} cartão(ões))`,
+                    items: creditItems,
+                });
+            }
+        };
+
         return (
-            <View key={index} style={[styles.insightCard, { borderLeftColor: iconColor }]}>
+            <TouchableOpacity
+                key={index}
+                style={[styles.insightCard, insight.actionableType && styles.insightCardActionable, { borderLeftColor: iconColor }]}
+                activeOpacity={insight.actionableType ? 0.8 : 1}
+                onPress={() => openInsightDetail(insight)}
+                disabled={!insight.actionableType}
+            >
                 <View style={styles.insightHeader}>
                     <Ionicons name={insight.icon} size={24} color={iconColor} />
                     <Text style={styles.insightTitle}>{insight.title}</Text>
                 </View>
                 <Text style={styles.insightMessage}>{insight.message}</Text>
-            </View>
+                {insight.actionableType && (
+                    <View style={styles.insightActionHint}>
+                        <Text style={styles.insightActionHintText}>Toque para ver detalhes</Text>
+                        <Ionicons name="chevron-forward" size={14} color={theme.colors.primary} />
+                    </View>
+                )}
+            </TouchableOpacity>
         );
     };
 
@@ -1562,63 +1721,57 @@ export default function ChartsScreen({ navigation }: any) {
                 {insights.length > 0 && (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Insights</Text>
-                        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.insightsScroll}>
+                        <View style={styles.insightsGrid}>
                             {insights.map((insight, index) => renderInsightCard(insight, index))}
-                        </ScrollView>
+                        </View>
                     </View>
                 )}
 
                 {/* Tabs */}
-                <ScrollView 
-                    horizontal 
-                    showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={allStyles.tabsScrollContainer}
-                >
-                    <View style={styles.tabsContainer}>
-                        <TouchableOpacity 
-                            style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
-                            onPress={() => setActiveTab('overview')}
-                        >
-                            <Ionicons name="stats-chart" size={16} color={activeTab === 'overview' ? theme.colors.primary : theme.colors.textMuted} />
-                            <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>Resumo</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.tab, activeTab === 'comparison' && styles.tabActive]}
-                            onPress={() => setActiveTab('comparison')}
-                        >
-                            <Ionicons name="git-compare" size={16} color={activeTab === 'comparison' ? theme.colors.primary : theme.colors.textMuted} />
-                            <Text style={[styles.tabText, activeTab === 'comparison' && styles.tabTextActive]}>Comparar</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.tab, activeTab === 'categories' && styles.tabActive]}
-                            onPress={() => setActiveTab('categories')}
-                        >
-                            <Ionicons name="pie-chart" size={16} color={activeTab === 'categories' ? theme.colors.primary : theme.colors.textMuted} />
-                            <Text style={[styles.tabText, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.tab, activeTab === 'ranking' && styles.tabActive]}
-                            onPress={() => setActiveTab('ranking')}
-                        >
-                            <Ionicons name="podium" size={16} color={activeTab === 'ranking' ? theme.colors.primary : theme.colors.textMuted} />
-                            <Text style={[styles.tabText, activeTab === 'ranking' && styles.tabTextActive]}>Ranking</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
-                            onPress={() => setActiveTab('cards')}
-                        >
-                            <Ionicons name="card" size={16} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
-                            <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity 
-                            style={[styles.tab, activeTab === 'score' && styles.tabActive]}
-                            onPress={() => setActiveTab('score')}
-                        >
-                            <Ionicons name="trophy" size={16} color={activeTab === 'score' ? theme.colors.primary : theme.colors.textMuted} />
-                            <Text style={[styles.tabText, activeTab === 'score' && styles.tabTextActive]}>Score</Text>
-                        </TouchableOpacity>
-                    </View>
-                </ScrollView>
+                <View style={styles.tabsContainer}>
+                    <TouchableOpacity 
+                        style={[styles.tab, activeTab === 'overview' && styles.tabActive]}
+                        onPress={() => setActiveTab('overview')}
+                    >
+                        <Ionicons name="stats-chart" size={16} color={activeTab === 'overview' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text style={[styles.tabText, activeTab === 'overview' && styles.tabTextActive]}>Resumo</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tab, activeTab === 'comparison' && styles.tabActive]}
+                        onPress={() => setActiveTab('comparison')}
+                    >
+                        <Ionicons name="git-compare" size={16} color={activeTab === 'comparison' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text style={[styles.tabText, activeTab === 'comparison' && styles.tabTextActive]}>Comparar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tab, activeTab === 'categories' && styles.tabActive]}
+                        onPress={() => setActiveTab('categories')}
+                    >
+                        <Ionicons name="pie-chart" size={16} color={activeTab === 'categories' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text style={[styles.tabText, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tab, activeTab === 'ranking' && styles.tabActive]}
+                        onPress={() => setActiveTab('ranking')}
+                    >
+                        <Ionicons name="podium" size={16} color={activeTab === 'ranking' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text style={[styles.tabText, activeTab === 'ranking' && styles.tabTextActive]}>Ranking</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
+                        onPress={() => setActiveTab('cards')}
+                    >
+                        <Ionicons name="card" size={16} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity 
+                        style={[styles.tab, activeTab === 'score' && styles.tabActive]}
+                        onPress={() => setActiveTab('score')}
+                    >
+                        <Ionicons name="trophy" size={16} color={activeTab === 'score' ? theme.colors.primary : theme.colors.textMuted} />
+                        <Text style={[styles.tabText, activeTab === 'score' && styles.tabTextActive]}>Score</Text>
+                    </TouchableOpacity>
+                </View>
 
                 {/* Conteúdo da tab ativa */}
                 <View style={styles.tabContent}>
@@ -1630,6 +1783,42 @@ export default function ChartsScreen({ navigation }: any) {
                     {activeTab === 'score' && renderScoreTab()}
                 </View>
             </ScrollView>
+
+            <Modal
+                visible={!!insightDetail}
+                transparent
+                animationType="fade"
+                onRequestClose={() => setInsightDetail(null)}
+            >
+                <View style={styles.insightModalOverlay}>
+                    <View style={styles.insightModalContent}>
+                        <View style={styles.insightModalHeader}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={styles.insightModalTitle}>{insightDetail?.title}</Text>
+                                <Text style={styles.insightModalSubtitle}>{insightDetail?.subtitle}</Text>
+                            </View>
+                            <TouchableOpacity onPress={() => setInsightDetail(null)} style={styles.insightModalCloseButton}>
+                                <Ionicons name="close" size={22} color={theme.colors.text} />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.insightModalList} showsVerticalScrollIndicator={false}>
+                            {(insightDetail?.items || []).map((item) => (
+                                <View key={item.id} style={styles.insightModalItem}>
+                                    <View style={{ flex: 1 }}>
+                                        <Text style={styles.insightModalItemTitle}>{item.title}</Text>
+                                        <Text style={styles.insightModalItemSubtitle}>{item.subtitle}</Text>
+                                    </View>
+                                    <Text style={styles.insightModalItemAmount}>R$ {formatCurrency(item.amount)}</Text>
+                                </View>
+                            ))}
+                            {insightDetail && insightDetail.items.length === 0 && (
+                                <Text style={styles.emptyText}>Nenhum item encontrado para este insight.</Text>
+                            )}
+                        </ScrollView>
+                    </View>
+                </View>
+            </Modal>
         </View>
     );
 }
