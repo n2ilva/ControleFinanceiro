@@ -186,6 +186,9 @@ export default function ChartsScreen({ navigation }: any) {
 
     const processMonthData = (transactions: Transaction[], month: number, year: number, creditCards: CreditCard[], salaries: Salary[] = []): MonthSummary => {
         const today = new Date();
+        const currentDay = today.getDate();
+        const currentMonth = today.getMonth();
+        const currentYear = today.getFullYear();
         
         // Função para calcular o período de fatura de uma transação
         const getInvoicePeriod = (transactionDate: string, dueDay: number): { month: number; year: number } => {
@@ -237,17 +240,47 @@ export default function ChartsScreen({ navigation }: any) {
         });
 
         const expenses = monthTransactions.filter(t => t.type === 'expense');
-        const incomes = monthTransactions.filter(t => t.type === 'income');
+        const incomes = monthTransactions.filter((transaction) => {
+            if (transaction.type !== 'income') return false;
+
+            if (transaction.receivedDate) {
+                const receivedDateObj = new Date(transaction.receivedDate);
+                const receivedDay = receivedDateObj.getDate();
+
+                const isCurrentMonth = month === currentMonth && year === currentYear;
+                const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
+                const isFutureMonth = year > currentYear || (year === currentYear && month > currentMonth);
+
+                if (isFutureMonth) return false;
+                if (isPastMonth) return true;
+
+                return isCurrentMonth && currentDay >= receivedDay;
+            }
+
+            return true;
+        });
 
         // Calcular salários do mês (salários ativos que têm paymentDate no mês ou são recorrentes)
         const monthlySalaries = salaries.filter(s => {
             if (!s.isActive) return false;
+
+            const isCurrentMonth = month === currentMonth && year === currentYear;
+            const isPastMonth = year < currentYear || (year === currentYear && month < currentMonth);
+            const isFutureMonth = year > currentYear || (year === currentYear && month > currentMonth);
+
             if (s.paymentDate) {
                 const d = new Date(s.paymentDate);
-                return d.getMonth() === month && d.getFullYear() === year;
+                if (d.getMonth() !== month || d.getFullYear() !== year) return false;
+
+                const paymentDay = d.getDate();
+                if (isFutureMonth) return false;
+                if (isPastMonth) return true;
+                return isCurrentMonth && currentDay >= paymentDay;
             }
-            // Salários sem data específica são considerados mensais
-            return true;
+
+            if (isFutureMonth) return false;
+            if (isPastMonth) return true;
+            return isCurrentMonth;
         });
         const totalSalaries = monthlySalaries.reduce((sum, s) => sum + s.amount, 0);
 
@@ -771,18 +804,36 @@ export default function ChartsScreen({ navigation }: any) {
 
             setChartData({ labels, expenses, income });
 
-            // Selecionar mês atual
-            const currentData = processMonthData(transactions, currentMonth, currentYear, creditCards, salaries);
-            setSelectedData(currentData);
-            
-            // Calcular mês anterior
+            // Selecionar mês atual com regra de carry-over (igual à Home)
+            const currentRaw = processMonthData(transactions, currentMonth, currentYear, creditCards, salaries);
+
             let prevMonth = currentMonth - 1;
             let prevYear = currentYear;
             if (prevMonth < 0) {
                 prevMonth = 11;
                 prevYear = currentYear - 1;
             }
-            const prevData = processMonthData(transactions, prevMonth, prevYear, creditCards, salaries);
+            const prevRaw = processMonthData(transactions, prevMonth, prevYear, creditCards, salaries);
+
+            const { current: homeCurrent, previous: homePrevious } = await FirestoreService.getMonthlyDataWithPrevious(currentMonth, currentYear);
+
+            const currentData: MonthSummary = {
+                ...currentRaw,
+                transactions: homeCurrent.transactions,
+                totalIncome: homeCurrent.totalIncome,
+                totalExpenses: homeCurrent.totalExpenses,
+                balance: homeCurrent.balance,
+            };
+
+            const prevData: MonthSummary = {
+                ...prevRaw,
+                transactions: homePrevious.transactions,
+                totalIncome: homePrevious.totalIncome,
+                totalExpenses: homePrevious.totalExpenses,
+                balance: homePrevious.balance,
+            };
+
+            setSelectedData(currentData);
             setPreviousMonthData(prevData);
             
             // Calcular comparação
@@ -812,7 +863,7 @@ export default function ChartsScreen({ navigation }: any) {
         }, [currentMonth, currentYear])
     );
 
-    const changeMonth = (direction: 'prev' | 'next') => {
+    const changeMonth = async (direction: 'prev' | 'next') => {
         let newMonth = currentMonth;
         let newYear = currentYear;
 
@@ -835,17 +886,35 @@ export default function ChartsScreen({ navigation }: any) {
         setCurrentMonth(newMonth);
         setCurrentYear(newYear);
         
-        const newData = processMonthData(allTransactions, newMonth, newYear, cards, allSalaries);
-        setSelectedData(newData);
-        
-        // Calcular mês anterior ao novo mês selecionado
+        const newRaw = processMonthData(allTransactions, newMonth, newYear, cards, allSalaries);
+
         let prevMonth = newMonth - 1;
         let prevYear = newYear;
         if (prevMonth < 0) {
             prevMonth = 11;
             prevYear = newYear - 1;
         }
-        const prevData = processMonthData(allTransactions, prevMonth, prevYear, cards, allSalaries);
+        const prevRaw = processMonthData(allTransactions, prevMonth, prevYear, cards, allSalaries);
+
+        const { current: homeCurrent, previous: homePrevious } = await FirestoreService.getMonthlyDataWithPrevious(newMonth, newYear);
+
+        const newData: MonthSummary = {
+            ...newRaw,
+            transactions: homeCurrent.transactions,
+            totalIncome: homeCurrent.totalIncome,
+            totalExpenses: homeCurrent.totalExpenses,
+            balance: homeCurrent.balance,
+        };
+
+        const prevData: MonthSummary = {
+            ...prevRaw,
+            transactions: homePrevious.transactions,
+            totalIncome: homePrevious.totalIncome,
+            totalExpenses: homePrevious.totalExpenses,
+            balance: homePrevious.balance,
+        };
+
+        setSelectedData(newData);
         setPreviousMonthData(prevData);
         
         const comparison = calculateMonthComparison(newData, prevData);
