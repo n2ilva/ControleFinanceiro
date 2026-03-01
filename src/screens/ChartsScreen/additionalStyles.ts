@@ -122,6 +122,11 @@ export const additionalStyles = StyleSheet.create({
         fontWeight: theme.fontWeight.bold,
         color: theme.colors.text,
     },
+    categoryComparisonPercentage: {
+        marginTop: 2,
+        fontSize: theme.fontSize.xs,
+        fontWeight: theme.fontWeight.semibold,
+    },
     rankingHeader: {
         flexDirection: 'row',
         alignItems: 'center',

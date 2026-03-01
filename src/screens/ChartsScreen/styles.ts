@@ -1,4 +1,4 @@
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { theme } from '../../theme';
 
 const styles = StyleSheet.create({
@@ -60,13 +60,23 @@ const styles = StyleSheet.create({
         paddingRight: theme.spacing.md,
         gap: theme.spacing.md,
     },
+    insightsGrid: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: theme.spacing.md,
+    },
     insightCard: {
-        width: 260,
+        width: '48%',
+        flexGrow: 1,
         backgroundColor: theme.colors.backgroundCard,
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.md,
         borderLeftWidth: 4,
         ...theme.shadows.sm,
+    },
+    insightCardActionable: {
+        borderWidth: 1,
+        borderColor: theme.colors.border,
     },
     insightHeader: {
         flexDirection: 'row',
@@ -84,21 +94,102 @@ const styles = StyleSheet.create({
         color: theme.colors.textSecondary,
         lineHeight: 20,
     },
+    insightActionHint: {
+        marginTop: theme.spacing.sm,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'flex-end',
+        gap: 4,
+    },
+    insightActionHintText: {
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.primary,
+        fontWeight: theme.fontWeight.semibold,
+    },
+
+    // Insight Details Modal
+    insightModalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        justifyContent: 'center',
+        padding: theme.spacing.lg,
+    },
+    insightModalContent: {
+        backgroundColor: theme.colors.backgroundCard,
+        borderRadius: theme.borderRadius.lg,
+        width: '100%',
+        ...(Platform.OS === 'web' && {
+            maxWidth: 720,
+            alignSelf: 'center',
+        }),
+        maxHeight: '80%',
+        ...theme.shadows.lg,
+    },
+    insightModalHeader: {
+        flexDirection: 'row',
+        alignItems: 'flex-start',
+        gap: theme.spacing.md,
+        padding: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    insightModalTitle: {
+        fontSize: theme.fontSize.lg,
+        fontWeight: theme.fontWeight.bold,
+        color: theme.colors.text,
+    },
+    insightModalSubtitle: {
+        marginTop: 4,
+        fontSize: theme.fontSize.sm,
+        color: theme.colors.textSecondary,
+    },
+    insightModalCloseButton: {
+        padding: theme.spacing.xs,
+    },
+    insightModalList: {
+        padding: theme.spacing.md,
+    },
+    insightModalItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.md,
+        paddingVertical: theme.spacing.sm,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    insightModalItemTitle: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: theme.fontWeight.semibold,
+        color: theme.colors.text,
+    },
+    insightModalItemSubtitle: {
+        marginTop: 2,
+        fontSize: theme.fontSize.xs,
+        color: theme.colors.textMuted,
+    },
+    insightModalItemAmount: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: theme.fontWeight.bold,
+        color: theme.colors.text,
+    },
     
     // Tabs
     tabsContainer: {
         flexDirection: 'row',
+        flexWrap: 'wrap',
         backgroundColor: theme.colors.backgroundCard,
         borderRadius: theme.borderRadius.md,
         padding: theme.spacing.xs,
         marginBottom: theme.spacing.md,
+        gap: theme.spacing.xs,
         ...theme.shadows.sm,
     },
     tab: {
-        flex: 1,
+        width: '24%',
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'center',
+        minHeight: 44,
         paddingVertical: theme.spacing.sm,
         paddingHorizontal: theme.spacing.xs,
         borderRadius: theme.borderRadius.sm,
@@ -120,28 +211,44 @@ const styles = StyleSheet.create({
         minHeight: 200,
     },
     
-    // Summary Grid
-    summaryGrid: {
+    // Month Comparison
+    monthComparisonContainer: {
         flexDirection: 'row',
+        alignItems: 'stretch',
         gap: theme.spacing.sm,
-        marginBottom: theme.spacing.md,
     },
-    summaryCardSmall: {
+    monthComparisonBlock: {
         flex: 1,
-        backgroundColor: theme.colors.backgroundCard,
-        padding: theme.spacing.md,
+        backgroundColor: theme.colors.surface,
         borderRadius: theme.borderRadius.md,
-        alignItems: 'center',
-        gap: 4,
-        ...theme.shadows.sm,
+        padding: theme.spacing.md,
+        gap: theme.spacing.xs,
     },
-    summaryLabelSmall: {
+    monthComparisonDivider: {
+        width: 1,
+        backgroundColor: theme.colors.border,
+        alignSelf: 'stretch',
+    },
+    monthComparisonTitle: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: theme.fontWeight.bold,
+        color: theme.colors.text,
+        marginBottom: 4,
+    },
+    monthComparisonRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingVertical: 2,
+    },
+    monthComparisonLabel: {
         fontSize: theme.fontSize.xs,
         color: theme.colors.textSecondary,
     },
-    summaryValueSmall: {
+    monthComparisonValue: {
         fontSize: theme.fontSize.sm,
-        fontWeight: theme.fontWeight.bold,
+        fontWeight: theme.fontWeight.semibold,
+        color: theme.colors.text,
     },
     
     // Card

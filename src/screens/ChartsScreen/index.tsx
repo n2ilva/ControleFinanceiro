@@ -8,7 +8,7 @@ import {
     TouchableOpacity,
     Modal,
 } from 'react-native';
-import { LineChart, PieChart } from 'react-native-chart-kit';
+import { LineChart } from 'react-native-chart-kit';
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import { FirestoreService } from '../../services/firestoreService';
@@ -175,12 +175,13 @@ export default function ChartsScreen({ navigation }: any) {
     });
     const [insights, setInsights] = useState<Insight[]>([]);
     const [insightDetail, setInsightDetail] = useState<InsightDetailState | null>(null);
-    const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'cards' | 'dues' | 'comparison' | 'ranking' | 'score'>('overview');
+    const [activeTab, setActiveTab] = useState<'overview' | 'categories' | 'cards' | 'dues' | 'comparison'>('overview');
     const [previousMonthData, setPreviousMonthData] = useState<MonthSummary | null>(null);
     const [monthComparison, setMonthComparison] = useState<MonthComparison | null>(null);
     const [financialScore, setFinancialScore] = useState<FinancialScore | null>(null);
     const [periodStats, setPeriodStats] = useState<PeriodStats | null>(null);
     const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
+    const [trendChartWidth, setTrendChartWidth] = useState(screenWidth - 64);
 
     const processMonthData = (transactions: Transaction[], month: number, year: number, creditCards: CreditCard[], salaries: Salary[] = []): MonthSummary => {
         const today = new Date();
@@ -1040,110 +1041,86 @@ export default function ChartsScreen({ navigation }: any) {
         return (
             <View>
                 {/* Comparação com mês anterior */}
-                {monthComparison && previousMonthData && (
+                {previousMonthData && (
                     <View style={styles.card}>
                         <Text style={styles.cardTitle}>Comparação com Mês Anterior</Text>
-                        <View style={allStyles.comparisonGrid}>
-                            <View style={allStyles.comparisonItem}>
-                                <Text style={allStyles.comparisonLabel}>Despesas</Text>
-                                <Text style={[
-                                    allStyles.comparisonValue,
-                                    { color: monthComparison.expenseChange > 0 ? theme.colors.danger : theme.colors.success }
-                                ]}>
-                                    {monthComparison.expenseChange > 0 ? '+' : ''}{formatCurrency(monthComparison.expenseChange)}
+                        <View style={styles.monthComparisonContainer}>
+                            <View style={styles.monthComparisonBlock}>
+                                <Text style={styles.monthComparisonTitle}>
+                                    {`${previousMonthData.monthName}/${previousMonthData.year}`}
                                 </Text>
-                                <Text style={allStyles.comparisonPercent}>
-                                    {monthComparison.expenseChangePercent > 0 ? '+' : ''}{monthComparison.expenseChangePercent.toFixed(1)}%
-                                </Text>
+                                <View style={styles.monthComparisonRow}>
+                                    <Text style={styles.monthComparisonLabel}>Receitas</Text>
+                                    <Text style={[styles.monthComparisonValue, { color: theme.colors.success }]}>
+                                        R$ {formatCurrency(previousMonthData.totalIncome)}
+                                    </Text>
+                                </View>
+                                <View style={styles.monthComparisonRow}>
+                                    <Text style={styles.monthComparisonLabel}>Despesas</Text>
+                                    <Text style={[styles.monthComparisonValue, { color: theme.colors.danger }]}>
+                                        R$ {formatCurrency(previousMonthData.totalExpenses)}
+                                    </Text>
+                                </View>
+                                <View style={styles.monthComparisonRow}>
+                                    <Text style={styles.monthComparisonLabel}>Saldo Final</Text>
+                                    <Text
+                                        style={[
+                                            styles.monthComparisonValue,
+                                            { color: previousMonthData.balance >= 0 ? theme.colors.success : theme.colors.danger },
+                                        ]}
+                                    >
+                                        R$ {formatCurrency(previousMonthData.balance)}
+                                    </Text>
+                                </View>
                             </View>
-                            <View style={allStyles.comparisonItem}>
-                                <Text style={allStyles.comparisonLabel}>Receitas</Text>
-                                <Text style={[
-                                    allStyles.comparisonValue,
-                                    { color: monthComparison.incomeChange > 0 ? theme.colors.success : theme.colors.danger }
-                                ]}>
-                                    {monthComparison.incomeChange > 0 ? '+' : ''}{formatCurrency(monthComparison.incomeChange)}
+
+                            <View style={styles.monthComparisonDivider} />
+
+                            <View style={styles.monthComparisonBlock}>
+                                <Text style={styles.monthComparisonTitle}>
+                                    {`${selectedData.monthName}/${selectedData.year}`}
                                 </Text>
-                                <Text style={allStyles.comparisonPercent}>
-                                    {monthComparison.incomeChangePercent > 0 ? '+' : ''}{monthComparison.incomeChangePercent.toFixed(1)}%
-                                </Text>
-                            </View>
-                            <View style={allStyles.comparisonItem}>
-                                <Text style={allStyles.comparisonLabel}>Saldo</Text>
-                                <Text style={[
-                                    allStyles.comparisonValue,
-                                    { color: monthComparison.balanceChange > 0 ? theme.colors.success : theme.colors.danger }
-                                ]}>
-                                    {monthComparison.balanceChange > 0 ? '+' : ''}{formatCurrency(monthComparison.balanceChange)}
-                                </Text>
-                                <Ionicons 
-                                    name={monthComparison.trend === 'improving' ? 'trending-up' : monthComparison.trend === 'worsening' ? 'trending-down' : 'remove'} 
-                                    size={20} 
-                                    color={monthComparison.trend === 'improving' ? theme.colors.success : monthComparison.trend === 'worsening' ? theme.colors.danger : theme.colors.textMuted}
-                                />
+                                <View style={styles.monthComparisonRow}>
+                                    <Text style={styles.monthComparisonLabel}>Receitas</Text>
+                                    <Text style={[styles.monthComparisonValue, { color: theme.colors.success }]}>
+                                        R$ {formatCurrency(selectedData.totalIncome)}
+                                    </Text>
+                                </View>
+                                <View style={styles.monthComparisonRow}>
+                                    <Text style={styles.monthComparisonLabel}>Despesas</Text>
+                                    <Text style={[styles.monthComparisonValue, { color: theme.colors.danger }]}>
+                                        R$ {formatCurrency(selectedData.totalExpenses)}
+                                    </Text>
+                                </View>
+                                <View style={styles.monthComparisonRow}>
+                                    <Text style={styles.monthComparisonLabel}>Saldo Final</Text>
+                                    <Text
+                                        style={[
+                                            styles.monthComparisonValue,
+                                            { color: selectedData.balance >= 0 ? theme.colors.success : theme.colors.danger },
+                                        ]}
+                                    >
+                                        R$ {formatCurrency(selectedData.balance)}
+                                    </Text>
+                                </View>
                             </View>
                         </View>
                     </View>
                 )}
 
-                {/* Resumo */}
-                <View style={styles.summaryGrid}>
-                    <View style={styles.summaryCardSmall}>
-                        <Ionicons name="arrow-down-circle" size={20} color={theme.colors.success} />
-                        <Text style={styles.summaryLabelSmall}>Receitas</Text>
-                        <Text style={[styles.summaryValueSmall, { color: theme.colors.success }]}>
-                            R$ {formatCurrency(selectedData.totalIncome)}
-                        </Text>
-                    </View>
-                    <View style={styles.summaryCardSmall}>
-                        <Ionicons name="arrow-up-circle" size={20} color={theme.colors.danger} />
-                        <Text style={styles.summaryLabelSmall}>Despesas</Text>
-                        <Text style={[styles.summaryValueSmall, { color: theme.colors.danger }]}>
-                            R$ {formatCurrency(selectedData.totalExpenses)}
-                        </Text>
-                    </View>
-                    <View style={styles.summaryCardSmall}>
-                        <Ionicons name="wallet" size={20} color={selectedData.balance >= 0 ? theme.colors.primary : theme.colors.danger} />
-                        <Text style={styles.summaryLabelSmall}>Saldo</Text>
-                        <Text style={[styles.summaryValueSmall, { color: selectedData.balance >= 0 ? theme.colors.primary : theme.colors.danger }]}>
-                            R$ {formatCurrency(selectedData.balance)}
-                        </Text>
-                    </View>
-                </View>
-
-                {/* Barra de progresso de despesas pagas */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Status das Despesas</Text>
-                    <View style={styles.progressContainer}>
-                        <View style={styles.progressLabels}>
-                            <Text style={styles.progressLabelText}>
-                                <Text style={{ color: theme.colors.success }}>Pagas: </Text>
-                                R$ {formatCurrency(selectedData.paidExpenses)}
-                            </Text>
-                            <Text style={styles.progressLabelText}>
-                                <Text style={{ color: theme.colors.warning }}>Pendentes: </Text>
-                                R$ {formatCurrency(selectedData.pendingExpenses)}
-                            </Text>
-                        </View>
-                        <View style={styles.progressBarBg}>
-                            <View 
-                                style={[
-                                    styles.progressBarFill, 
-                                    { 
-                                        width: `${selectedData.totalExpenses > 0 ? (selectedData.paidExpenses / selectedData.totalExpenses) * 100 : 0}%`,
-                                        backgroundColor: theme.colors.success 
-                                    }
-                                ]} 
-                            />
-                        </View>
-                        <Text style={styles.progressPercentage}>
-                            {selectedData.totalExpenses > 0 ? ((selectedData.paidExpenses / selectedData.totalExpenses) * 100).toFixed(0) : 0}% pago
-                        </Text>
-                    </View>
-                </View>
-
                 {/* Gráfico de tendência */}
-                <View style={styles.card}>
+                <View
+                    style={styles.card}
+                    onLayout={(event) => {
+                        const cardWidth = event.nativeEvent.layout.width;
+                        const horizontalPadding = theme.spacing.md * 2;
+                        const availableWidth = Math.max(220, cardWidth - horizontalPadding);
+
+                        if (Math.abs(availableWidth - trendChartWidth) > 1) {
+                            setTrendChartWidth(availableWidth);
+                        }
+                    }}
+                >
                     <Text style={styles.cardTitle}>Tendência do Ano</Text>
                     {chartData.labels.length > 0 && (
                         <LineChart
@@ -1163,7 +1140,7 @@ export default function ChartsScreen({ navigation }: any) {
                                 ],
                                 legend: ['Receitas', 'Despesas']
                             }}
-                            width={screenWidth - 64}
+                            width={trendChartWidth}
                             height={180}
                             chartConfig={chartConfig}
                             bezier
@@ -1187,26 +1164,6 @@ export default function ChartsScreen({ navigation }: any) {
 
         return (
             <View>
-                {/* Gráfico de pizza */}
-                <View style={styles.card}>
-                    <PieChart
-                        data={selectedData.categories.slice(0, 5).map(cat => ({
-                            name: cat.category,
-                            population: cat.amount,
-                            color: cat.color,
-                            legendFontColor: theme.colors.textSecondary,
-                            legendFontSize: 11,
-                        }))}
-                        width={screenWidth - 64}
-                        height={180}
-                        chartConfig={chartConfig}
-                        accessor="population"
-                        backgroundColor="transparent"
-                        paddingLeft="15"
-                        absolute
-                    />
-                </View>
-
                 {/* Lista de categorias */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Detalhamento por Categoria</Text>
@@ -1365,91 +1322,84 @@ export default function ChartsScreen({ navigation }: any) {
             );
         }
 
+        const savingsRateDiff = selectedData.savingsRate - previousMonthData.savingsRate;
+        const savingsRateDiffColor = savingsRateDiff > 0 ? theme.colors.success : savingsRateDiff < 0 ? theme.colors.danger : theme.colors.textMuted;
+        const savingsRateDiffSignal = savingsRateDiff > 0 ? '+' : savingsRateDiff < 0 ? '-' : '';
+        const savingsRateDiffStatus = savingsRateDiff > 0 ? 'positivo' : savingsRateDiff < 0 ? 'negativo' : 'estável';
+        const currentCategoriesMap = new Map(selectedData.categories.map((category) => [category.category, category.amount]));
+        const previousCategoriesMap = new Map(previousMonthData.categories.map((category) => [category.category, category.amount]));
+        const categoriesToCompare = Array.from(
+            new Set([...currentCategoriesMap.keys(), ...previousCategoriesMap.keys()])
+        ).sort((categoryA, categoryB) => {
+            const totalA = (currentCategoriesMap.get(categoryA) || 0) + (previousCategoriesMap.get(categoryA) || 0);
+            const totalB = (currentCategoriesMap.get(categoryB) || 0) + (previousCategoriesMap.get(categoryB) || 0);
+            return totalB - totalA;
+        });
+
         return (
             <View>
-                {/* Gráfico comparativo de categorias */}
-                <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Evolução por Categoria</Text>
-                    {periodStats && periodStats.categoryGrowth.length > 0 ? (
-                        periodStats.categoryGrowth.slice(0, 5).map((item, index) => (
-                            <View key={index} style={allStyles.categoryGrowthItem}>
-                                <View style={allStyles.categoryGrowthInfo}>
-                                    <Text style={allStyles.categoryGrowthName}>{item.category}</Text>
-                                    <Text style={[
-                                        allStyles.categoryGrowthPercent,
-                                        { color: item.growth > 0 ? theme.colors.danger : theme.colors.success }
-                                    ]}>
-                                        {item.growth > 0 ? '+' : ''}{item.growthPercent.toFixed(0)}%
-                                    </Text>
-                                </View>
-                                <Text style={[
-                                    allStyles.categoryGrowthValue,
-                                    { color: item.growth > 0 ? theme.colors.danger : theme.colors.success }
-                                ]}>
-                                    {item.growth > 0 ? '+' : ''}R$ {formatCurrency(Math.abs(item.growth))}
-                                </Text>
-                            </View>
-                        ))
-                    ) : (
-                        <Text style={styles.emptyText}>Sem mudanças significativas nas categorias</Text>
-                    )}
-                </View>
-
                 {/* Taxa de economia mensal */}
                 <View style={styles.card}>
                     <Text style={styles.cardTitle}>Taxa de Economia</Text>
                     <View style={allStyles.savingsRateContainer}>
                         <View style={allStyles.savingsRateItem}>
-                            <Text style={allStyles.savingsRateLabel}>Mês Atual</Text>
-                            <Text style={[
-                                allStyles.savingsRateValue,
-                                { color: selectedData.savingsRate >= 20 ? theme.colors.success : selectedData.savingsRate >= 10 ? theme.colors.warning : theme.colors.danger }
-                            ]}>
-                                {selectedData.savingsRate.toFixed(1)}%
+                            <Text style={allStyles.savingsRateLabel}>Variação vs mês anterior</Text>
+                            <Text style={[allStyles.savingsRateValue, { color: savingsRateDiffColor }]}> 
+                                {savingsRateDiffSignal}{Math.abs(savingsRateDiff).toFixed(1)}%
                             </Text>
-                            <Text style={allStyles.savingsRateAmount}>R$ {formatCurrency(selectedData.balance)}</Text>
-                        </View>
-                        <View style={allStyles.savingsRateItem}>
-                            <Text style={allStyles.savingsRateLabel}>Mês Anterior</Text>
-                            <Text style={[
-                                allStyles.savingsRateValue,
-                                { color: previousMonthData.savingsRate >= 20 ? theme.colors.success : previousMonthData.savingsRate >= 10 ? theme.colors.warning : theme.colors.danger }
-                            ]}>
-                                {previousMonthData.savingsRate.toFixed(1)}%
+                            <Text style={[allStyles.savingsRateAmount, { color: savingsRateDiffColor }]}>
+                                {savingsRateDiffStatus}
                             </Text>
-                            <Text style={allStyles.savingsRateAmount}>R$ {formatCurrency(previousMonthData.balance)}</Text>
                         </View>
                     </View>
                 </View>
 
                 {/* Comparação de categorias lado a lado */}
                 <View style={styles.card}>
-                    <Text style={styles.cardTitle}>Top 5 Categorias - Comparação</Text>
-                    {selectedData.categories.slice(0, 5).map((cat, index) => {
-                        const prevCat = previousMonthData.categories.find(c => c.category === cat.category);
-                        const prevAmount = prevCat ? prevCat.amount : 0;
-                        const diff = cat.amount - prevAmount;
+                    <Text style={styles.cardTitle}>Comparação por Categoria</Text>
+                    {categoriesToCompare.length === 0 ? (
+                        <Text style={styles.emptyText}>Sem categorias para comparação</Text>
+                    ) : categoriesToCompare.map((categoryName) => {
+                        const prevAmount = previousCategoriesMap.get(categoryName) || 0;
+                        const currentAmount = currentCategoriesMap.get(categoryName) || 0;
+                        const diff = prevAmount - currentAmount;
+                        const hasPreviousSpend = prevAmount > 0;
+                        const diffPercent = prevAmount > 0
+                            ? (diff / prevAmount) * 100
+                            : (currentAmount > 0 ? -100 : 0);
+                        const diffColor = diff > 0 ? theme.colors.success : diff < 0 ? theme.colors.danger : theme.colors.textMuted;
+                        const diffSignal = diff > 0 ? '+' : diff < 0 ? '-' : '';
+                        const diffTypeLabel = diff > 0 ? 'Positivo' : diff < 0 ? 'Negativo' : 'Estável';
                         
                         return (
-                            <View key={index} style={allStyles.categoryComparisonItem}>
-                                <Text style={allStyles.categoryComparisonName}>{cat.category}</Text>
+                            <View key={categoryName} style={allStyles.categoryComparisonItem}>
+                                <Text style={allStyles.categoryComparisonName}>{categoryName}</Text>
                                 <View style={allStyles.categoryComparisonValues}>
-                                    <View style={allStyles.categoryComparisonColumn}>
-                                        <Text style={allStyles.categoryComparisonLabel}>Atual</Text>
-                                        <Text style={allStyles.categoryComparisonAmount}>R$ {formatCurrency(cat.amount)}</Text>
-                                    </View>
                                     <View style={allStyles.categoryComparisonColumn}>
                                         <Text style={allStyles.categoryComparisonLabel}>Anterior</Text>
                                         <Text style={allStyles.categoryComparisonAmount}>R$ {formatCurrency(prevAmount)}</Text>
                                     </View>
                                     <View style={allStyles.categoryComparisonColumn}>
+                                        <Text style={allStyles.categoryComparisonLabel}>Atual</Text>
+                                        <Text style={allStyles.categoryComparisonAmount}>R$ {formatCurrency(currentAmount)}</Text>
+                                    </View>
+                                    <View style={allStyles.categoryComparisonColumn}>
                                         <Text style={allStyles.categoryComparisonLabel}>Diferença</Text>
                                         <Text style={[
                                             allStyles.categoryComparisonAmount,
-                                            { color: diff > 0 ? theme.colors.danger : diff < 0 ? theme.colors.success : theme.colors.textMuted }
+                                            { color: diffColor }
                                         ]}>
-                                            {diff > 0 ? '+' : ''}R$ {formatCurrency(Math.abs(diff))}
+                                            {diffSignal}R$ {formatCurrency(Math.abs(diff))}
                                         </Text>
+                                        {hasPreviousSpend ? (
+                                            <Text style={[allStyles.categoryComparisonPercentage, { color: diffColor }]}> 
+                                                {Math.abs(diffPercent).toFixed(1)}% {diffTypeLabel}
+                                            </Text>
+                                        ) : (
+                                            <Text style={[allStyles.categoryComparisonPercentage, { color: theme.colors.textMuted }]}> 
+                                                Sem gasto no mês anterior
+                                            </Text>
+                                        )}
                                     </View>
                                 </View>
                             </View>
@@ -1751,25 +1701,11 @@ export default function ChartsScreen({ navigation }: any) {
                         <Text style={[styles.tabText, activeTab === 'categories' && styles.tabTextActive]}>Categorias</Text>
                     </TouchableOpacity>
                     <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'ranking' && styles.tabActive]}
-                        onPress={() => setActiveTab('ranking')}
-                    >
-                        <Ionicons name="podium" size={16} color={activeTab === 'ranking' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'ranking' && styles.tabTextActive]}>Ranking</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
                         style={[styles.tab, activeTab === 'cards' && styles.tabActive]}
                         onPress={() => setActiveTab('cards')}
                     >
                         <Ionicons name="card" size={16} color={activeTab === 'cards' ? theme.colors.primary : theme.colors.textMuted} />
                         <Text style={[styles.tabText, activeTab === 'cards' && styles.tabTextActive]}>Cartões</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity 
-                        style={[styles.tab, activeTab === 'score' && styles.tabActive]}
-                        onPress={() => setActiveTab('score')}
-                    >
-                        <Ionicons name="trophy" size={16} color={activeTab === 'score' ? theme.colors.primary : theme.colors.textMuted} />
-                        <Text style={[styles.tabText, activeTab === 'score' && styles.tabTextActive]}>Score</Text>
                     </TouchableOpacity>
                 </View>
 
@@ -1778,9 +1714,7 @@ export default function ChartsScreen({ navigation }: any) {
                     {activeTab === 'overview' && renderOverviewTab()}
                     {activeTab === 'comparison' && renderComparisonTab()}
                     {activeTab === 'categories' && renderCategoriesTab()}
-                    {activeTab === 'ranking' && renderRankingTab()}
                     {activeTab === 'cards' && renderCardsTab()}
-                    {activeTab === 'score' && renderScoreTab()}
                 </View>
             </ScrollView>
 
