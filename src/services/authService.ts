@@ -1,6 +1,7 @@
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut as firebaseSignOut,
   onAuthStateChanged,
   User,
@@ -30,6 +31,15 @@ export const AuthService = {
     try {
       const userCredential = await signInWithEmailAndPassword(auth, email, password);
       return userCredential.user;
+    } catch (error: any) {
+      throw new Error(this.getErrorMessage(error.code));
+    }
+  },
+
+  // Enviar e-mail de redefinição de senha
+  async resetPassword(email: string): Promise<void> {
+    try {
+      await sendPasswordResetEmail(auth, email);
     } catch (error: any) {
       throw new Error(this.getErrorMessage(error.code));
     }
@@ -67,6 +77,7 @@ export const AuthService = {
       'auth/invalid-credential': 'Credenciais inválidas',
       'auth/too-many-requests': 'Muitas tentativas. Tente novamente mais tarde',
       'auth/network-request-failed': 'Erro de conexão. Verifique sua internet',
+      'auth/missing-email': 'Informe um e-mail para redefinir a senha',
     };
 
     return errorMessages[errorCode] || 'Erro ao autenticar. Tente novamente';

@@ -75,6 +75,17 @@ const styles = StyleSheet.create({
     eyeIcon: {
         padding: theme.spacing.sm,
     },
+    forgotPasswordButton: {
+        alignSelf: 'flex-end',
+        marginTop: -theme.spacing.xs,
+        marginBottom: theme.spacing.sm,
+        paddingVertical: theme.spacing.xs,
+    },
+    forgotPasswordText: {
+        fontSize: theme.fontSize.sm,
+        color: theme.colors.primary,
+        fontWeight: theme.fontWeight.medium,
+    },
     loginButton: {
         backgroundColor: theme.colors.primary,
         borderRadius: theme.borderRadius.md,

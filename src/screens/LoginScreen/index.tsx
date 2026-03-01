@@ -41,6 +41,25 @@ export default function LoginScreen({ navigation }: any) {
         }
     };
 
+    const handleForgotPassword = async () => {
+        const normalizedEmail = email.trim();
+
+        if (!normalizedEmail) {
+            Alert.alert('E-mail obrigatório', 'Informe seu e-mail para receber o link de redefinição de senha.');
+            return;
+        }
+
+        setLoading(true);
+        try {
+            await AuthService.resetPassword(normalizedEmail);
+            Alert.alert('E-mail enviado', 'Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada.');
+        } catch (error: any) {
+            Alert.alert('Erro ao redefinir senha', error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     return (
         <KeyboardAvoidingView
             style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}
@@ -105,6 +124,14 @@ export default function LoginScreen({ navigation }: any) {
                             />
                         </TouchableOpacity>
                     </View>
+
+                    <TouchableOpacity
+                        style={styles.forgotPasswordButton}
+                        onPress={handleForgotPassword}
+                        disabled={loading}
+                    >
+                        <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
+                    </TouchableOpacity>
 
                     {/* Botão de Login */}
                     <TouchableOpacity
