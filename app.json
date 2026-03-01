@@ -37,6 +37,9 @@
       "favicon": "./assets/controlefinanceiro.png",
       "bundler": "metro"
     },
+    "experiments": {
+      "baseUrl": "/ControleFinanceiro"
+    },
     "extra": {
       "firebase": {
         "apiKey": "AIzaSyA1Ki7azHJIWYe_XSnhuZg4Q11QX9cL640",

@@ -5,6 +5,7 @@ import {
     TextInput,
     TouchableOpacity,
     Alert,
+    Platform,
     ScrollView,
     ActivityIndicator,
     Share,
@@ -210,7 +211,22 @@ export default function GroupScreen({ navigation }: any) {
         );
     };
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        if (Platform.OS === 'web') {
+            const confirmed = typeof window !== 'undefined'
+                ? window.confirm('Tem certeza que deseja sair da conta?')
+                : true;
+
+            if (!confirmed) return;
+
+            try {
+                await signOut();
+            } catch (error) {
+                Alert.alert('Erro', 'Não foi possível fazer logout');
+            }
+            return;
+        }
+
         Alert.alert(
             'Sair da Conta',
             'Tem certeza que deseja sair?',

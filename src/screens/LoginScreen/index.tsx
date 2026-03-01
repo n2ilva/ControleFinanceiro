@@ -23,8 +23,18 @@ export default function LoginScreen({ navigation }: any) {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [resetFeedback, setResetFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+    const showAlert = (title: string, message: string) => {
+        if (Platform.OS === 'web' && typeof window !== 'undefined') {
+            window.alert(`${title}\n\n${message}`);
+            return;
+        }
+        Alert.alert(title, message);
+    };
 
     const handleLogin = async () => {
+        setResetFeedback(null);
         if (!email.trim() || !password.trim()) {
             Alert.alert('Erro', 'Por favor, preencha todos os campos');
             return;
@@ -42,19 +52,34 @@ export default function LoginScreen({ navigation }: any) {
     };
 
     const handleForgotPassword = async () => {
-        const normalizedEmail = email.trim();
+        setResetFeedback(null);
+        let normalizedEmail = email.trim();
+
+        if (!normalizedEmail && Platform.OS === 'web' && typeof window !== 'undefined') {
+            const promptedEmail = window.prompt('Informe seu e-mail para redefinir a senha:') || '';
+            normalizedEmail = promptedEmail.trim();
+            if (normalizedEmail) {
+                setEmail(normalizedEmail);
+            }
+        }
 
         if (!normalizedEmail) {
-            Alert.alert('E-mail obrigatório', 'Informe seu e-mail para receber o link de redefinição de senha.');
+            const message = 'Informe seu e-mail para receber o link de redefinição de senha.';
+            setResetFeedback({ type: 'error', message });
+            showAlert('E-mail obrigatório', message);
             return;
         }
 
         setLoading(true);
         try {
             await AuthService.resetPassword(normalizedEmail);
-            Alert.alert('E-mail enviado', 'Enviamos um link para redefinir sua senha. Verifique sua caixa de entrada.');
+            const successMessage = 'Se este e-mail estiver cadastrado, enviaremos um link para redefinir sua senha. Verifique também spam/lixo eletrônico.';
+            setResetFeedback({ type: 'success', message: successMessage });
+            showAlert('E-mail enviado', successMessage);
         } catch (error: any) {
-            Alert.alert('Erro ao redefinir senha', error.message);
+            const errorMessage = error.message || 'Não foi possível enviar o e-mail de redefinição.';
+            setResetFeedback({ type: 'error', message: errorMessage });
+            showAlert('Erro ao redefinir senha', errorMessage);
         } finally {
             setLoading(false);
         }
@@ -132,6 +157,24 @@ export default function LoginScreen({ navigation }: any) {
                     >
                         <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
                     </TouchableOpacity>
+
+                    {resetFeedback && (
+                        <View
+                            style={[
+                                styles.resetFeedbackContainer,
+                                resetFeedback.type === 'success' ? styles.resetFeedbackSuccess : styles.resetFeedbackError,
+                            ]}
+                        >
+                            <Text
+                                style={[
+                                    styles.resetFeedbackText,
+                                    resetFeedback.type === 'success' ? styles.resetFeedbackTextSuccess : styles.resetFeedbackTextError,
+                                ]}
+                            >
+                                {resetFeedback.message}
+                            </Text>
+                        </View>
+                    )}
 
                     {/* Botão de Login */}
                     <TouchableOpacity

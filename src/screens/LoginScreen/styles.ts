@@ -86,6 +86,31 @@ const styles = StyleSheet.create({
         color: theme.colors.primary,
         fontWeight: theme.fontWeight.medium,
     },
+    resetFeedbackContainer: {
+        borderRadius: theme.borderRadius.sm,
+        paddingVertical: theme.spacing.sm,
+        paddingHorizontal: theme.spacing.md,
+        marginBottom: theme.spacing.sm,
+        borderWidth: 1,
+    },
+    resetFeedbackSuccess: {
+        backgroundColor: theme.colors.success + '20',
+        borderColor: theme.colors.success + '40',
+    },
+    resetFeedbackError: {
+        backgroundColor: theme.colors.danger + '20',
+        borderColor: theme.colors.danger + '40',
+    },
+    resetFeedbackText: {
+        fontSize: theme.fontSize.sm,
+        fontWeight: theme.fontWeight.medium,
+    },
+    resetFeedbackTextSuccess: {
+        color: theme.colors.success,
+    },
+    resetFeedbackTextError: {
+        color: theme.colors.danger,
+    },
     loginButton: {
         backgroundColor: theme.colors.primary,
         borderRadius: theme.borderRadius.md,
