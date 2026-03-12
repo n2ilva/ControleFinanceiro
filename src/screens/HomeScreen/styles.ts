@@ -122,6 +122,9 @@ const styles = StyleSheet.create({
         ...theme.shadows.sm,
         flexDirection: 'row',
     },
+    transactionCardColumn: {
+        flex: 1,
+    },
     categoryIndicator: {
         width: 4,
     },

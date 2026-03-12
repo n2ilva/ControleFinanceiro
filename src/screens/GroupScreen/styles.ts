@@ -9,6 +9,22 @@ export default StyleSheet.create({
     content: {
         padding: theme.spacing.md,
     },
+    // Layout de colunas em desktop
+    topRow: {
+        // mobile: coluna
+    },
+    topRowDesktop: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
+        gap: theme.spacing.lg,
+    },
+    topColumn: {
+        // mobile: full width
+    },
+    topColumnDesktop: {
+        flex: 1,
+    },
     loadingContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -436,5 +452,27 @@ export default StyleSheet.create({
         color: theme.colors.text,
         fontSize: theme.fontSize.md,
         fontWeight: theme.fontWeight.semibold,
+    },
+    // Manage card (inline, always visible)
+    manageCard: {
+        backgroundColor: theme.colors.backgroundCard,
+        borderRadius: theme.borderRadius.lg,
+        padding: theme.spacing.lg,
+        marginBottom: theme.spacing.lg,
+        ...theme.shadows.md,
+    },
+    manageCardHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: theme.spacing.sm,
+        marginBottom: theme.spacing.lg,
+        paddingBottom: theme.spacing.md,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.border,
+    },
+    manageCardTitle: {
+        fontSize: theme.fontSize.lg,
+        fontWeight: theme.fontWeight.bold,
+        color: theme.colors.text,
     },
 });

@@ -20,6 +20,9 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         justifyContent: 'space-between',
     },
+    cardItemColumn: {
+        flex: 1,
+    },
     cardInfo: {
         flex: 1,
         gap: 6,

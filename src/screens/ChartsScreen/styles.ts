@@ -119,7 +119,6 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.lg,
         width: '100%',
         ...(Platform.OS === 'web' && {
-            maxWidth: 720,
             alignSelf: 'center',
         }),
         maxHeight: '80%',

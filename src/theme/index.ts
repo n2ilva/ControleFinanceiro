@@ -123,6 +123,12 @@ export const theme = {
       elevation: 8,
     },
   },
+
+  breakpoints: {
+    mobile: 0,
+    tablet: 768,
+    desktop: 1024,
+  },
 };
 
 export type Theme = typeof theme;

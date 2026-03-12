@@ -18,9 +18,11 @@ import { CATEGORY_ICONS } from '../../constants';
 import styles from './styles';
 import { MonthSelector, BalanceCard, TransactionFilters, SearchBar, AddMenu } from './components';
 import { PageHeader } from '../../components';
+import { useResponsive } from '../../hooks/useResponsive';
 
 export default function HomeScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
+    const { isDesktop } = useResponsive();
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
     const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -87,7 +89,7 @@ export default function HomeScreen({ navigation }: any) {
 
         return (
             <TouchableOpacity
-                style={styles.transactionCard}
+                style={[styles.transactionCard, isDesktop && styles.transactionCardColumn]}
                 onPress={() => navigation.navigate('EditTransaction', { transaction: item })}
                 activeOpacity={0.7}
             >
@@ -281,13 +283,7 @@ export default function HomeScreen({ navigation }: any) {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* Título da página */}
-            <PageHeader
-                title="Transações"
-                onGroupPress={() => navigation.navigate('Group')}
-            />
-
-            {/* Seletor de mês */}
+            {/* Seletor de mês */}}
             <MonthSelector
                 monthName={monthName}
                 year={currentYear}
@@ -322,10 +318,13 @@ export default function HomeScreen({ navigation }: any) {
             />
 
             <FlatList
+                key={isDesktop ? 'two-col' : 'one-col'}
+                numColumns={isDesktop ? 2 : 1}
                 data={filteredTransactions}
                 renderItem={renderTransaction}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={[styles.listContent, { paddingBottom: 100 + 60 + insets.bottom }]}
+                columnWrapperStyle={isDesktop ? { gap: theme.spacing.md } : undefined}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
                 }
@@ -338,12 +337,14 @@ export default function HomeScreen({ navigation }: any) {
                 }
             />
 
-            {/* Menu de adicionar */}
-            <AddMenu
-                bottomInset={insets.bottom}
-                onAddExpense={() => navigation.navigate('AddExpense', { month: currentMonth, year: currentYear })}
-                onAddIncome={() => navigation.navigate('AddIncome', { month: currentMonth, year: currentYear })}
-            />
+            {/* Menu de adicionar – oculto no desktop (ações ficam no sidebar) */}
+            {!isDesktop && (
+                <AddMenu
+                    bottomInset={insets.bottom}
+                    onAddExpense={() => navigation.navigate('AddExpense', { month: currentMonth, year: currentYear })}
+                    onAddIncome={() => navigation.navigate('AddIncome', { month: currentMonth, year: currentYear })}
+                />
+            )}
         </View>
     );
 }

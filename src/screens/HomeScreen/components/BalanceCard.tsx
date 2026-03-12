@@ -74,7 +74,6 @@ const styles = StyleSheet.create({
         borderRadius: theme.borderRadius.lg,
         padding: theme.spacing.sm,
         width: '100%',
-        maxWidth: 900,
         ...theme.shadows.md,
     },
     balanceLabel: {

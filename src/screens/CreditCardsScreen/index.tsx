@@ -17,7 +17,7 @@ import { CreditCard } from '../../types';
 import { FirestoreService } from '../../services/firestoreService';
 import { theme } from '../../theme';
 import styles from './styles';
-import { PageHeader } from '../../components';
+import { useResponsive } from '../../hooks/useResponsive';
 
 interface CardWithAmount extends CreditCard {
     currentMonthAmount: number;
@@ -26,6 +26,7 @@ interface CardWithAmount extends CreditCard {
 
 export default function CreditCardsScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
+    const { isDesktop } = useResponsive();
     const [cards, setCards] = useState<CardWithAmount[]>([]);
     const [refreshing, setRefreshing] = useState(false);
     const [modalVisible, setModalVisible] = useState(false);
@@ -233,7 +234,7 @@ export default function CreditCardsScreen({ navigation }: any) {
     const renderCard = ({ item }: { item: CardWithAmount }) => {
         return (
             <TouchableOpacity
-                style={styles.cardItem}
+                style={[styles.cardItem, isDesktop && styles.cardItemColumn]}
                 onPress={() => navigation.navigate('CardDetails', { cardId: item.id })}
                 activeOpacity={0.7}
             >
@@ -288,13 +289,7 @@ export default function CreditCardsScreen({ navigation }: any) {
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
-            {/* Título da página */}
-            <PageHeader
-                title="Cartões"
-                onGroupPress={() => navigation.navigate('Group')}
-            />
-
-            {/* Filtros */}
+            {/* Filtros */}}
             <View style={styles.filterContainer}>
                 <TouchableOpacity
                     style={[styles.filterButton, filter === 'all' && styles.filterButtonActive]}
@@ -333,10 +328,13 @@ export default function CreditCardsScreen({ navigation }: any) {
             </View>
 
             <FlatList
+                key={isDesktop ? 'two-col' : 'one-col'}
+                numColumns={isDesktop ? 2 : 1}
                 data={filteredCards}
                 renderItem={renderCard}
                 keyExtractor={(item) => item.id}
                 contentContainerStyle={styles.listContent}
+                columnWrapperStyle={isDesktop ? { gap: theme.spacing.md } : undefined}
                 refreshControl={
                     <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={theme.colors.primary} />
                 }
