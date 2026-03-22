@@ -7,7 +7,8 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.background,
     },
     listContent: {
-        padding: theme.spacing.md,
+        paddingHorizontal: theme.spacing.xs,
+        paddingTop: theme.spacing.sm,
         paddingBottom: 120,
     },
     // ── Visual de cartão real ──

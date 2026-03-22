@@ -384,9 +384,14 @@ export default function GoalsScreen() {
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
           <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
             <ScrollView showsVerticalScrollIndicator={false}>
-              <Text style={styles.modalTitle}>
-                {editingGoal ? 'Editar Meta' : 'Nova Meta'}
-              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+                <Text style={[styles.modalTitle, { marginBottom: 0 }]}>
+                  {editingGoal ? 'Editar Meta' : 'Nova Meta'}
+                </Text>
+                <TouchableOpacity onPress={() => setModalVisible(false)}>
+                  <Ionicons name="close" size={28} color={theme.colors.text} />
+                </TouchableOpacity>
+              </View>
 
               <Text style={styles.label}>Título</Text>
               <TextInput
@@ -558,7 +563,12 @@ export default function GoalsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setAmountModalVisible(false)}>
           <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
-            <Text style={styles.modalTitle}>Adicionar Valor</Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <Text style={[styles.modalTitle, { marginBottom: 0 }]}>Adicionar Valor</Text>
+              <TouchableOpacity onPress={() => setAmountModalVisible(false)}>
+                <Ionicons name="close" size={28} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
             {selectedGoalForAmount && (
               <Text style={[styles.label, { textAlign: 'center', marginBottom: theme.spacing.md }]}>
                 {selectedGoalForAmount.title} — {formatCurrency(selectedGoalForAmount.currentAmount)} de {formatCurrency(selectedGoalForAmount.targetAmount)}

@@ -343,7 +343,12 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
                     >
                         <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
                             <ScrollView showsVerticalScrollIndicator={false}>
-                                <Text style={styles.modalTitle}>{title}</Text>
+                                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+                                    <Text style={[styles.modalTitle, { marginBottom: 0 }]}>{title}</Text>
+                                    <TouchableOpacity onPress={onClose}>
+                                        <Ionicons name="close" size={28} color={theme.colors.text} />
+                                    </TouchableOpacity>
+                                </View>
 
                                 {/* Descrição */}
                                 <Text style={styles.label}>Descrição (opcional)</Text>
@@ -557,10 +562,6 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
                                     ) : (
                                         <Text style={styles.saveButtonText}>Salvar</Text>
                                     )}
-                                </TouchableOpacity>
-
-                                <TouchableOpacity style={styles.cancelButton} onPress={onClose} disabled={isSaving}>
-                                    <Text style={styles.cancelButtonText}>Cancelar</Text>
                                 </TouchableOpacity>
                             </ScrollView>
                         </TouchableOpacity>

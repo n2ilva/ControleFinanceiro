@@ -592,14 +592,9 @@ export default function CreditCardsScreen({ navigation }: any) {
 
                         </View>
 
-                        <View style={styles.modalFooter}>
-                            <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={() => setModalVisible(false)}>
-                                <Text style={styles.cancelButtonText}>Cancelar</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
-                                <Text style={styles.saveButtonText}>Salvar</Text>
-                            </TouchableOpacity>
-                        </View>
+                        <TouchableOpacity style={[styles.button, styles.saveButton]} onPress={handleSave}>
+                            <Text style={styles.saveButtonText}>Salvar</Text>
+                        </TouchableOpacity>
 
                         {editingCard && (
                             <TouchableOpacity

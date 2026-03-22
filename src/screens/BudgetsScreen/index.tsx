@@ -334,9 +334,14 @@ export default function BudgetsScreen() {
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
           <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
-            <Text style={styles.modalTitle}>
-              {editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}
-            </Text>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
+              <Text style={[styles.modalTitle, { marginBottom: 0 }]}>
+                {editingBudget ? 'Editar Orçamento' : 'Novo Orçamento'}
+              </Text>
+              <TouchableOpacity onPress={() => setModalVisible(false)}>
+                <Ionicons name="close" size={28} color={theme.colors.text} />
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.label}>Categoria</Text>
             <ScrollView horizontal={false} style={{ maxHeight: 160, marginBottom: theme.spacing.md }}>

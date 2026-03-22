@@ -327,27 +327,17 @@ export default function SalariesScreen() {
                                 </Text>
                             </View>
 
-                            <View style={styles.modalButtons}>
-                                <TouchableOpacity
-                                    style={[styles.modalButton, styles.cancelButton]}
-                                    onPress={() => setModalVisible(false)}
-                                    disabled={isSaving}
-                                >
-                                    <Text style={styles.cancelButtonText}>Cancelar</Text>
-                                </TouchableOpacity>
-
-                                <TouchableOpacity
-                                    style={[styles.modalButton, styles.saveButton, isSaving && { opacity: 0.7 }]}
-                                    onPress={handleSave}
-                                    disabled={isSaving}
-                                >
-                                    {isSaving ? (
-                                        <ActivityIndicator size="small" color={theme.colors.white} />
-                                    ) : (
-                                        <Text style={styles.saveButtonText}>Salvar</Text>
-                                    )}
-                                </TouchableOpacity>
-                            </View>
+                            <TouchableOpacity
+                                style={[styles.modalButton, styles.saveButton, isSaving && { opacity: 0.7 }]}
+                                onPress={handleSave}
+                                disabled={isSaving}
+                            >
+                                {isSaving ? (
+                                    <ActivityIndicator size="small" color={theme.colors.white} />
+                                ) : (
+                                    <Text style={styles.saveButtonText}>Salvar</Text>
+                                )}
+                            </TouchableOpacity>
 
                             {editingSalary && (
                                 <TouchableOpacity
