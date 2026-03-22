@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
     View,
     Text,
@@ -19,6 +19,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function LoginScreen({ navigation }: any) {
     const insets = useSafeAreaInsets();
+    const passwordRef = useRef<TextInput>(null);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -86,6 +87,7 @@ export default function LoginScreen({ navigation }: any) {
                 contentContainerStyle={styles.scrollContent}
                 keyboardShouldPersistTaps="handled"
             >
+                <View style={styles.innerContainer}>
                 {/* Logo/Ícone */}
                 <View style={styles.logoContainer}>
                     <View style={styles.logoCircle}>
@@ -115,6 +117,9 @@ export default function LoginScreen({ navigation }: any) {
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoCorrect={false}
+                            returnKeyType="next"
+                            onSubmitEditing={() => passwordRef.current?.focus()}
+                            blurOnSubmit={false}
                         />
                     </View>
 
@@ -122,6 +127,7 @@ export default function LoginScreen({ navigation }: any) {
                     <View style={styles.inputContainer}>
                         <Ionicons name="lock-closed-outline" size={20} color={theme.colors.textMuted} style={styles.inputIcon} />
                         <TextInput
+                            ref={passwordRef}
                             style={styles.input}
                             placeholder="Senha"
                             placeholderTextColor={theme.colors.textMuted}
@@ -129,6 +135,8 @@ export default function LoginScreen({ navigation }: any) {
                             onChangeText={setPassword}
                             secureTextEntry={!showPassword}
                             autoCapitalize="none"
+                            returnKeyType="go"
+                            onSubmitEditing={handleLogin}
                         />
                         <TouchableOpacity
                             onPress={() => setShowPassword(!showPassword)}
@@ -188,6 +196,7 @@ export default function LoginScreen({ navigation }: any) {
                             <Text style={styles.registerLink}>Criar conta</Text>
                         </TouchableOpacity>
                     </View>
+                </View>
                 </View>
             </ScrollView>
         </KeyboardAvoidingView>

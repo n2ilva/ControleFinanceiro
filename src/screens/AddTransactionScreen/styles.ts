@@ -149,31 +149,38 @@ const styles = StyleSheet.create({
         marginTop: theme.spacing.md,
     },
     categoryGroupTitle: {
-        fontSize: theme.fontSize.sm,
+        fontSize: theme.fontSize.xs,
+        fontWeight: theme.fontWeight.semibold,
         color: theme.colors.textSecondary,
-        marginBottom: theme.spacing.sm,
+        textTransform: 'uppercase' as const,
+        letterSpacing: 0.8,
+        marginBottom: theme.spacing.xs,
     },
-    categoryRow: {
-        gap: theme.spacing.sm,
-        paddingRight: theme.spacing.sm,
-    },
-    categoryButton: {
-        width: 120,
-        alignItems: 'center',
-        justifyContent: 'center',
+    categoryChipWrap: {
+        flexDirection: 'row' as const,
+        flexWrap: 'wrap' as const,
         gap: theme.spacing.xs,
-        paddingVertical: theme.spacing.md,
-        borderRadius: theme.borderRadius.md,
+    },
+    categoryChip: {
+        flexDirection: 'row' as const,
+        alignItems: 'center' as const,
+        gap: 4,
+        paddingVertical: 5,
+        paddingHorizontal: theme.spacing.sm,
+        borderRadius: 20,
         backgroundColor: theme.colors.backgroundCard,
         borderWidth: 1,
         borderColor: theme.colors.border,
     },
-    categoryButtonText: {
+    categoryChipSelected: {
+        backgroundColor: theme.colors.primary,
+        borderColor: theme.colors.primary,
+    },
+    categoryChipText: {
         fontSize: theme.fontSize.sm,
         color: theme.colors.text,
-        textAlign: 'center',
     },
-    categoryButtonTextActive: {
+    categoryChipTextSelected: {
         color: theme.colors.white,
         fontWeight: theme.fontWeight.semibold,
     },

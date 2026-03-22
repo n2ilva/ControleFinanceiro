@@ -8,6 +8,8 @@ import {
     TextInput,
     Modal,
     ActivityIndicator,
+    KeyboardAvoidingView,
+    Platform,
 } from 'react-native';
 import { crossAlert } from '../../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
@@ -273,6 +275,7 @@ export default function SalariesScreen() {
                 transparent={true}
                 onRequestClose={() => setModalVisible(false)}
             >
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                         <View style={styles.modalHeader}>
@@ -358,6 +361,7 @@ export default function SalariesScreen() {
                         </View>
                     </View>
                 </View>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );

@@ -8,6 +8,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { crossAlert } from '../../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
@@ -83,6 +85,17 @@ export default function BudgetsScreen() {
     setRefreshing(false);
   };
 
+  const formatBRL = (value: string): string => {
+    const digits = value.replace(/\D/g, '');
+    if (!digits) return '';
+    const number = parseInt(digits, 10) / 100;
+    return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const parseBRL = (value: string): number => {
+    return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+  };
+
   const openAddModal = () => {
     setEditingBudget(null);
     setSelectedCategory('');
@@ -93,7 +106,7 @@ export default function BudgetsScreen() {
   const openEditModal = (budget: Budget) => {
     setEditingBudget(budget);
     setSelectedCategory(budget.category);
-    setLimitValue(budget.limit.toString());
+    setLimitValue(formatBRL(String(Math.round(budget.limit * 100))));
     setModalVisible(true);
   };
 
@@ -103,7 +116,7 @@ export default function BudgetsScreen() {
       return;
     }
 
-    const limit = parseFloat(limitValue.replace(',', '.'));
+    const limit = parseBRL(limitValue);
     if (isNaN(limit) || limit <= 0) {
       crossAlert('Erro', 'Insira um valor válido para o limite');
       return;
@@ -318,6 +331,7 @@ export default function BudgetsScreen() {
 
       {/* Modal de adicionar/editar */}
       <Modal visible={modalVisible} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
           <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
             <Text style={styles.modalTitle}>
@@ -358,10 +372,10 @@ export default function BudgetsScreen() {
             <TextInput
               style={styles.input}
               value={limitValue}
-              onChangeText={setLimitValue}
-              placeholder="Ex: 500,00"
+              onChangeText={(text) => setLimitValue(formatBRL(text))}
+              placeholder="0,00"
               placeholderTextColor={theme.colors.textMuted}
-              keyboardType="decimal-pad"
+              keyboardType="numeric"
             />
 
             <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
@@ -377,6 +391,7 @@ export default function BudgetsScreen() {
             )}
           </TouchableOpacity>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

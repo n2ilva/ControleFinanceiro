@@ -21,49 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import AddCardBottomSheet from '../../components/AddCardBottomSheet';
 import { getCustomCategories, addCustomCategory, AVAILABLE_ICONS, CustomCategory } from '../../services/customCategoryService';
-
-const EXPENSE_CATEGORIES = [
-    { id: 'moradia', label: 'Moradia', icon: 'home', group: 'Essenciais' },
-    { id: 'aluguel', label: 'Aluguel', icon: 'home-outline', group: 'Essenciais' },
-    { id: 'condominio', label: 'Condomínio', icon: 'business', group: 'Essenciais' },
-    { id: 'agua', label: 'Água', icon: 'water', group: 'Essenciais' },
-    { id: 'energia', label: 'Energia', icon: 'flash', group: 'Essenciais' },
-    { id: 'gas', label: 'Gás', icon: 'flame', group: 'Essenciais' },
-    { id: 'internet', label: 'Internet', icon: 'wifi', group: 'Essenciais' },
-    { id: 'telefone', label: 'Telefone', icon: 'call', group: 'Essenciais' },
-    { id: 'mercado', label: 'Mercado', icon: 'cart', group: 'Essenciais' },
-    { id: 'alimentacao', label: 'Alimentação', icon: 'restaurant', group: 'Essenciais' },
-    { id: 'transporte', label: 'Transporte', icon: 'car', group: 'Essenciais' },
-    { id: 'combustivel', label: 'Combustível', icon: 'speedometer', group: 'Essenciais' },
-    { id: 'saude', label: 'Saúde', icon: 'medical', group: 'Pessoais' },
-    { id: 'educacao', label: 'Educação', icon: 'school', group: 'Pessoais' },
-    { id: 'vestuario', label: 'Vestuário', icon: 'shirt', group: 'Pessoais' },
-    { id: 'pets', label: 'Pets', icon: 'paw', group: 'Pessoais' },
-    { id: 'academia', label: 'Academia', icon: 'barbell', group: 'Pessoais' },
-    { id: 'lazer', label: 'Lazer', icon: 'game-controller', group: 'Pessoais' },
-    { id: 'viagem', label: 'Viagem', icon: 'airplane', group: 'Pessoais' },
-    { id: 'presentes', label: 'Presentes', icon: 'gift', group: 'Pessoais' },
-    { id: 'assinaturas', label: 'Assinaturas', icon: 'card', group: 'Financeiro' },
-    { id: 'impostos', label: 'Impostos', icon: 'document-text', group: 'Financeiro' },
-    { id: 'manutencao', label: 'Manutenção', icon: 'construct', group: 'Financeiro' },
-    { id: 'outros', label: 'Outros', icon: 'ellipsis-horizontal', group: 'Outros' },
-];
-
-const INCOME_CATEGORIES = [
-    { id: 'salario', label: 'Salário', icon: 'cash', group: 'Principais' },
-    { id: 'decimoTerceiro', label: '13º Salário', icon: 'cash-outline', group: 'Principais' },
-    { id: 'ferias', label: 'Férias', icon: 'sunny', group: 'Principais' },
-    { id: 'deposito', label: 'Depósito', icon: 'card', group: 'Principais' },
-    { id: 'freelance', label: 'Freelance', icon: 'briefcase', group: 'Principais' },
-    { id: 'bonus', label: 'Bonificação', icon: 'sparkles', group: 'Principais' },
-    { id: 'rendimentos', label: 'Rendimentos', icon: 'trending-up', group: 'Investimentos' },
-    { id: 'investimentos', label: 'Investimentos', icon: 'stats-chart', group: 'Investimentos' },
-    { id: 'aluguelRecebido', label: 'Aluguel', icon: 'home', group: 'Outros' },
-    { id: 'reembolso', label: 'Reembolso', icon: 'refresh', group: 'Outros' },
-    { id: 'vendas', label: 'Vendas', icon: 'pricetag', group: 'Outros' },
-    { id: 'extra', label: 'Extra', icon: 'gift', group: 'Outros' },
-    { id: 'outros', label: 'Outros', icon: 'ellipsis-horizontal', group: 'Outros' },
-];
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../constants';
 
 export default function AddTransactionScreen({ navigation, route }: any) {
     const [description, setDescription] = useState('');
@@ -726,55 +684,38 @@ export default function AddTransactionScreen({ navigation, route }: any) {
                     <Text style={styles.label}>Categoria</Text>
                     {(() => {
                         const list = [...(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES), ...customCategories.map(c => ({ ...c, group: 'Personalizadas' }))];
-                        const grouped = list.reduce((acc: Record<string, typeof list>, cat) => {
-                            const group = cat.group || 'Outros';
-                            if (!acc[group]) acc[group] = [] as typeof list;
-                            acc[group].push(cat);
-                            return acc;
-                        }, {} as Record<string, typeof list>);
 
-                        return Object.entries(grouped).map(([group, cats]) => (
-                            <View key={group} style={styles.categoryGroup}>
-                                <Text style={styles.categoryGroupTitle}>{group}</Text>
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator={false}
-                                    contentContainerStyle={styles.categoryRow}
-                                >
-                                    {cats.map((cat) => {
-                                        const isSelected = category === cat.id;
-                                        const categoryColor =
-                                            theme.colors.categories[cat.id as keyof typeof theme.colors.categories] ||
-                                            theme.colors.primary;
-
-                                        return (
-                                            <TouchableOpacity
-                                                key={cat.id}
+                        return (
+                            <View style={[styles.categoryChipWrap, { marginTop: 8 }]}>
+                                {list.map((cat) => {
+                                    const isSelected = category === cat.id;
+                                    return (
+                                        <TouchableOpacity
+                                            key={cat.id}
+                                            style={[
+                                                styles.categoryChip,
+                                                isSelected && styles.categoryChipSelected,
+                                            ]}
+                                            onPress={() => setCategory(cat.id)}
+                                        >
+                                            <Ionicons
+                                                name={cat.icon as any}
+                                                size={12}
+                                                color={isSelected ? theme.colors.white : theme.colors.textSecondary}
+                                            />
+                                            <Text
                                                 style={[
-                                                    styles.categoryButton,
-                                                    isSelected && { backgroundColor: categoryColor, borderColor: categoryColor },
+                                                    styles.categoryChipText,
+                                                    isSelected && styles.categoryChipTextSelected,
                                                 ]}
-                                                onPress={() => setCategory(cat.id)}
                                             >
-                                                <Ionicons
-                                                    name={cat.icon as any}
-                                                    size={22}
-                                                    color={isSelected ? theme.colors.white : categoryColor}
-                                                />
-                                                <Text
-                                                    style={[
-                                                        styles.categoryButtonText,
-                                                        isSelected && styles.categoryButtonTextActive,
-                                                    ]}
-                                                >
-                                                    {cat.label}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        );
-                                    })}
-                                </ScrollView>
+                                                {cat.label}
+                                            </Text>
+                                        </TouchableOpacity>
+                                    );
+                                })}
                             </View>
-                        ));
+                        );
                     })()}
                     <TouchableOpacity
                         style={styles.addCategoryButton}

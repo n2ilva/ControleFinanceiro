@@ -31,7 +31,8 @@
           "cameraPermission": "Permitir que o App acesse a câmera para ler QR Codes de Notas Fiscais."
         }
       ],
-      "expo-font"
+      "expo-font",
+      "@react-native-community/datetimepicker"
     ],
     "web": {
       "favicon": "./assets/controlefinanceiro.png",

@@ -7,6 +7,8 @@ import {
     RefreshControl,
     TextInput,
     Modal,
+    KeyboardAvoidingView,
+    Platform,
     ScrollView,
 } from 'react-native';
 import { crossAlert } from '../../utils/alert';
@@ -479,6 +481,7 @@ export default function CreditCardsScreen({ navigation }: any) {
                 transparent={true}
                 onRequestClose={() => setModalVisible(false)}
             >
+                <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContent}>
                       <ScrollView showsVerticalScrollIndicator={false}>
@@ -610,6 +613,7 @@ export default function CreditCardsScreen({ navigation }: any) {
                       </ScrollView>
                     </View>
                 </View>
+                </KeyboardAvoidingView>
             </Modal>
         </View>
     );

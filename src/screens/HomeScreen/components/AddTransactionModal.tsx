@@ -476,7 +476,7 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
                                                 <Ionicons
                                                     name={cat.icon as any}
                                                     size={14}
-                                                    color={category === cat.id ? theme.colors.primary : theme.colors.textMuted}
+                                                    color={category === cat.id ? theme.colors.white : theme.colors.textSecondary}
                                                 />
                                                 <Text
                                                     style={[

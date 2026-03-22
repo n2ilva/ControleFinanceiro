@@ -10,6 +10,11 @@ const styles = StyleSheet.create({
         flexGrow: 1,
         justifyContent: 'center',
         padding: theme.spacing.lg,
+        alignItems: 'center',
+    },
+    innerContainer: {
+        width: '100%',
+        maxWidth: 460,
     },
     logoContainer: {
         alignItems: 'center',

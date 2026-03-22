@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   TextInput,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { crossAlert } from '../../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,10 +21,32 @@ import { theme } from '../../theme';
 import { formatCurrency } from '../../utils';
 import styles from './styles';
 
+const DateTimePicker = Platform.OS !== 'web'
+  ? require('@react-native-community/datetimepicker').default
+  : null;
+
 const GOAL_COLORS = [
   '#6366F1', '#EC4899', '#10B981', '#F59E0B', '#3B82F6',
   '#8B5CF6', '#EF4444', '#06B6D4', '#F97316', '#22C55E',
 ];
+
+const formatBRL = (value: string): string => {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) return '';
+  const number = parseInt(digits, 10) / 100;
+  return number.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseBRL = (value: string): number => {
+  return parseFloat(value.replace(/\./g, '').replace(',', '.')) || 0;
+};
+
+const formatDateMask = (value: string): string => {
+  const digits = value.replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+};
 
 const GOAL_ICONS = [
   'flag', 'home', 'car', 'airplane', 'school', 'laptop',
@@ -46,6 +70,9 @@ export default function GoalsScreen() {
   const [selectedColor, setSelectedColor] = useState(GOAL_COLORS[0]);
   const [selectedIcon, setSelectedIcon] = useState(GOAL_ICONS[0]);
   const [addAmountValue, setAddAmountValue] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerDate, setDatePickerDate] = useState(new Date());
+  const webDateInputRef = useRef<any>(null);
 
   const loadGoals = async () => {
     try {
@@ -84,12 +111,52 @@ export default function GoalsScreen() {
     setEditingGoal(goal);
     setTitle(goal.title);
     setDescription(goal.description || '');
-    setTargetAmount(goal.targetAmount.toString());
-    setCurrentAmount(goal.currentAmount.toString());
-    setDeadline(goal.deadline ? new Date(goal.deadline).toLocaleDateString('pt-BR') : '');
+    setTargetAmount(formatBRL(String(Math.round(goal.targetAmount * 100))));
+    setCurrentAmount(formatBRL(String(Math.round(goal.currentAmount * 100))));
+    if (goal.deadline) {
+      const d = new Date(goal.deadline);
+      setDeadline(d.toLocaleDateString('pt-BR'));
+      setDatePickerDate(d);
+    } else {
+      setDeadline('');
+    }
     setSelectedColor(goal.color || GOAL_COLORS[0]);
     setSelectedIcon(goal.icon || GOAL_ICONS[0]);
     setModalVisible(true);
+  };
+
+  const openDatePicker = () => {
+    if (Platform.OS === 'web') {
+      webDateInputRef.current?.click();
+    } else {
+      if (deadline) {
+        const parts = deadline.split('/');
+        if (parts.length === 3) {
+          const d = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+          if (!isNaN(d.getTime())) setDatePickerDate(d);
+        }
+      }
+      setShowDatePicker(true);
+    }
+  };
+
+  const onDatePickerChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') setShowDatePicker(false);
+    if (event.type === 'dismissed') { setShowDatePicker(false); return; }
+    if (selectedDate) {
+      setDatePickerDate(selectedDate);
+      const d = selectedDate;
+      const formatted = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+      setDeadline(formatted);
+    }
+  };
+
+  const onWebDateChange = (e: any) => {
+    const val: string = e.target.value; // YYYY-MM-DD
+    if (val) {
+      const [year, month, day] = val.split('-');
+      setDeadline(`${day}/${month}/${year}`);
+    }
   };
 
   const openAmountModal = (goal: FinancialGoal) => {
@@ -104,13 +171,13 @@ export default function GoalsScreen() {
       return;
     }
 
-    const target = parseFloat(targetAmount.replace(',', '.'));
+    const target = parseBRL(targetAmount);
     if (isNaN(target) || target <= 0) {
       crossAlert('Erro', 'Insira um valor alvo válido');
       return;
     }
 
-    const current = parseFloat(currentAmount.replace(',', '.')) || 0;
+    const current = parseBRL(currentAmount);
 
     let deadlineISO: string | undefined;
     if (deadline) {
@@ -177,7 +244,7 @@ export default function GoalsScreen() {
   const handleAddAmount = async () => {
     if (!selectedGoalForAmount) return;
 
-    const amount = parseFloat(addAmountValue.replace(',', '.'));
+    const amount = parseBRL(addAmountValue);
     if (isNaN(amount) || amount <= 0) {
       crossAlert('Erro', 'Insira um valor válido');
       return;
@@ -313,6 +380,7 @@ export default function GoalsScreen() {
 
       {/* Modal Nova/Editar Meta */}
       <Modal visible={modalVisible} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setModalVisible(false)}>
           <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -342,31 +410,92 @@ export default function GoalsScreen() {
               <TextInput
                 style={styles.input}
                 value={targetAmount}
-                onChangeText={setTargetAmount}
-                placeholder="Ex: 10000"
+                onChangeText={(text) => setTargetAmount(formatBRL(text))}
+                placeholder="Ex: 10.000,00"
                 placeholderTextColor={theme.colors.textMuted}
-                keyboardType="decimal-pad"
+                keyboardType="numeric"
               />
 
               <Text style={styles.label}>Valor atual (R$)</Text>
               <TextInput
                 style={styles.input}
                 value={currentAmount}
-                onChangeText={setCurrentAmount}
-                placeholder="Ex: 2500"
+                onChangeText={(text) => setCurrentAmount(formatBRL(text))}
+                placeholder="Ex: 2.500,00"
                 placeholderTextColor={theme.colors.textMuted}
-                keyboardType="decimal-pad"
+                keyboardType="numeric"
               />
 
-              <Text style={styles.label}>Prazo (dd/mm/aaaa) - opcional</Text>
-              <TextInput
-                style={styles.input}
-                value={deadline}
-                onChangeText={setDeadline}
-                placeholder="Ex: 31/12/2025"
-                placeholderTextColor={theme.colors.textMuted}
-                keyboardType="number-pad"
-              />
+              <Text style={styles.label}>Prazo (opcional)</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <TextInput
+                  style={[styles.input, { flex: 1, marginBottom: 0 }]}
+                  value={deadline}
+                  onChangeText={(text) => setDeadline(formatDateMask(text))}
+                  placeholder="dd/mm/aaaa"
+                  placeholderTextColor={theme.colors.textMuted}
+                  keyboardType="number-pad"
+                  maxLength={10}
+                />
+                {Platform.OS === 'web' ? (
+                  <View
+                    style={{
+                      padding: 12,
+                      backgroundColor: theme.colors.card,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                      position: 'relative',
+                      overflow: 'hidden',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={22} color={theme.colors.primary} />
+                    <input
+                      ref={webDateInputRef}
+                      type="date"
+                      onChange={onWebDateChange}
+                      style={{
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        width: '100%',
+                        height: '100%',
+                        opacity: 0,
+                        cursor: 'pointer',
+                        border: 'none',
+                        padding: 0,
+                        margin: 0,
+                        fontSize: 16,
+                      } as any}
+                    />
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={openDatePicker}
+                    style={{
+                      padding: 12,
+                      backgroundColor: theme.colors.card,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: theme.colors.border,
+                    }}
+                  >
+                    <Ionicons name="calendar-outline" size={22} color={theme.colors.primary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {showDatePicker && Platform.OS !== 'web' && DateTimePicker && (
+                <DateTimePicker
+                  value={datePickerDate}
+                  mode="date"
+                  display={Platform.OS === 'android' ? 'default' : 'spinner'}
+                  onChange={onDatePickerChange}
+                  locale="pt-BR"
+                />
+              )}
 
               <Text style={styles.label}>Cor</Text>
               <View style={styles.colorGrid}>
@@ -421,10 +550,12 @@ export default function GoalsScreen() {
             </ScrollView>
           </TouchableOpacity>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Modal Adicionar Valor */}
       <Modal visible={amountModalVisible} transparent animationType="slide">
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setAmountModalVisible(false)}>
           <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
             <Text style={styles.modalTitle}>Adicionar Valor</Text>
@@ -438,10 +569,10 @@ export default function GoalsScreen() {
             <TextInput
               style={styles.input}
               value={addAmountValue}
-              onChangeText={setAddAmountValue}
-              placeholder="Ex: 500"
+              onChangeText={(text) => setAddAmountValue(formatBRL(text))}
+              placeholder="Ex: 500,00"
               placeholderTextColor={theme.colors.textMuted}
-              keyboardType="decimal-pad"
+              keyboardType="numeric"
               autoFocus
             />
 
@@ -450,6 +581,7 @@ export default function GoalsScreen() {
             </TouchableOpacity>
           </TouchableOpacity>
         </TouchableOpacity>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
