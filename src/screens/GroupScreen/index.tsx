@@ -1,0 +1,507 @@
+import React, { useState, useEffect } from 'react';
+import {
+    View,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    Platform,
+    ScrollView,
+    ActivityIndicator,
+    Share,
+    FlatList,
+    Modal,
+} from 'react-native';
+import { crossAlert } from '../../utils/alert';
+import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { GroupService } from '../../services/groupService';
+import { useAuth } from '../../contexts/AuthContext';
+import { Group } from '../../types';
+import { theme } from '../../theme';
+import styles from './styles';
+import { useResponsive } from '../../hooks/useResponsive';
+
+interface MemberProfile {
+    id: string;
+    email: string;
+    displayName: string;
+}
+
+export default function GroupScreen({ navigation }: any) {
+    const insets = useSafeAreaInsets();
+    const { isDesktop } = useResponsive();
+    const { user, signOut } = useAuth();
+    const [loading, setLoading] = useState(true);
+    const [groups, setGroups] = useState<Group[]>([]);
+    const [activeGroup, setActiveGroup] = useState<Group | null>(null);
+    const [groupName, setGroupName] = useState('');
+    const [joinCode, setJoinCode] = useState('');
+    const [creating, setCreating] = useState(false);
+
+    // Estados para gerenciamento de membros
+    const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
+    const [memberProfiles, setMemberProfiles] = useState<MemberProfile[]>([]);
+    const [loadingMembers, setLoadingMembers] = useState(false);
+    const [showMembersModal, setShowMembersModal] = useState(false);
+
+    useEffect(() => {
+        loadGroups();
+    }, []);
+
+    const loadGroups = async () => {
+        try {
+            setLoading(true);
+            const userGroups = await GroupService.getUserGroups();
+            const active = await GroupService.getActiveGroup();
+            setGroups(userGroups);
+            setActiveGroup(active);
+            if (active) {
+                setSelectedGroup(active);
+                await loadMemberProfiles(active);
+            }
+        } catch (error) {
+            console.error('Error loading groups:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const loadMemberProfiles = async (group: Group) => {
+        setLoadingMembers(true);
+        try {
+            const profiles = await GroupService.getMemberProfiles(group.members);
+            setMemberProfiles(profiles);
+        } catch (error) {
+            console.error('Error loading member profiles:', error);
+            setMemberProfiles([]);
+        } finally {
+            setLoadingMembers(false);
+        }
+    };
+
+    const handleOpenMembersModal = async (group: Group) => {
+        setSelectedGroup(group);
+        await loadMemberProfiles(group);
+    };
+
+    const handleRemoveMember = (member: MemberProfile) => {
+        if (!selectedGroup) return;
+
+        crossAlert(
+            'Remover Membro',
+            `Tem certeza que deseja remover ${member.displayName || member.email} do grupo?`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Remover',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await GroupService.removeMember(selectedGroup.id, member.id);
+                            crossAlert('Sucesso', 'Membro removido do grupo');
+                            // Recarregar membros e grupos
+                            await loadMemberProfiles(selectedGroup);
+                            await loadGroups();
+                            // Atualizar selectedGroup com dados atualizados
+                            const updatedGroups = await GroupService.getUserGroups();
+                            const updatedGroup = updatedGroups.find(g => g.id === selectedGroup.id);
+                            if (updatedGroup) {
+                                setSelectedGroup(updatedGroup);
+                            }
+                        } catch (error: any) {
+                            crossAlert('Erro', error.message || 'Não foi possível remover o membro');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleRegenerateCode = () => {
+        if (!selectedGroup) return;
+
+        crossAlert(
+            'Alterar Código',
+            'Ao alterar o código, o código antigo não funcionará mais. Deseja continuar?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Alterar',
+                    onPress: async () => {
+                        try {
+                            const newCode = await GroupService.regenerateGroupCode(selectedGroup.id);
+                            crossAlert('Sucesso', `Novo código: ${newCode}`);
+                            // Atualizar grupo selecionado com novo código
+                            setSelectedGroup({ ...selectedGroup, code: newCode });
+                            await loadGroups();
+                        } catch (error: any) {
+                            crossAlert('Erro', error.message || 'Não foi possível alterar o código');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleCreateGroup = async () => {
+        if (!groupName.trim()) {
+            crossAlert('Erro', 'Por favor, insira um nome para o grupo');
+            return;
+        }
+
+        setCreating(true);
+        try {
+            const newGroup = await GroupService.createGroup(groupName.trim());
+            setGroupName('');
+            await loadGroups();
+            crossAlert('Sucesso!', `Grupo "${newGroup.name}" criado!\n\nCódigo: ${newGroup.code}\n\nCompartilhe este código com outras pessoas.`);
+        } catch (error: any) {
+            crossAlert('Erro', error.message || 'Não foi possível criar o grupo');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleJoinGroup = async () => {
+        if (!joinCode.trim()) {
+            crossAlert('Erro', 'Por favor, insira o código do grupo');
+            return;
+        }
+
+        setCreating(true);
+        try {
+            const joinedGroup = await GroupService.joinGroup(joinCode.trim());
+            setJoinCode('');
+            await loadGroups();
+            crossAlert('Sucesso!', `Você entrou no grupo "${joinedGroup.name}"!`);
+        } catch (error: any) {
+            crossAlert('Erro', error.message || 'Não foi possível entrar no grupo');
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleSwitchGroup = async (group: Group) => {
+        if (activeGroup?.id === group.id) return;
+
+        try {
+            await GroupService.switchActiveGroup(group.id);
+            setActiveGroup(group);
+            setSelectedGroup(group);
+            await loadMemberProfiles(group);
+            crossAlert('Grupo Alterado', `Agora você está visualizando: ${group.name}`);
+        } catch (error) {
+            crossAlert('Erro', 'Não foi possível alternar o grupo');
+        }
+    };
+
+    const handleLeaveGroup = (group: Group) => {
+        crossAlert(
+            'Sair do Grupo',
+            `Tem certeza que deseja sair do grupo "${group.name}"? Você perderá acesso aos dados compartilhados.`,
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Sair',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await GroupService.leaveGroup(group.id);
+                            await loadGroups();
+                            crossAlert('Sucesso', 'Você saiu do grupo');
+                        } catch (error) {
+                            crossAlert('Erro', 'Não foi possível sair do grupo');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleLogout = async () => {
+        if (Platform.OS === 'web') {
+            const confirmed = typeof window !== 'undefined'
+                ? window.confirm('Tem certeza que deseja sair da conta?')
+                : true;
+
+            if (!confirmed) return;
+
+            try {
+                await signOut();
+            } catch (error) {
+                crossAlert('Erro', 'Não foi possível fazer logout');
+            }
+            return;
+        }
+
+        crossAlert(
+            'Sair da Conta',
+            'Tem certeza que deseja sair?',
+            [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                    text: 'Sair',
+                    style: 'destructive',
+                    onPress: async () => {
+                        try {
+                            await signOut();
+                        } catch (error) {
+                            crossAlert('Erro', 'Não foi possível fazer logout');
+                        }
+                    },
+                },
+            ]
+        );
+    };
+
+    const handleShareCode = async (group: Group) => {
+        try {
+            await Share.share({
+                message: `Entre no meu grupo de controle financeiro!\n\nNome: ${group.name}\nCódigo: ${group.code}\n\nBaixe o app e use este código para acessar os dados compartilhados.`,
+            });
+        } catch (error) {
+            console.error('Error sharing:', error);
+        }
+    };
+
+    const renderGroupCard = ({ item }: { item: Group }) => {
+        const isActive = activeGroup?.id === item.id;
+
+        return (
+            <TouchableOpacity
+                style={[styles.groupCard, isActive && styles.groupCardActive]}
+                onPress={() => handleSwitchGroup(item)}
+                activeOpacity={0.7}
+            >
+                <View style={styles.groupCardContent}>
+                    <View style={styles.groupCardHeader}>
+                        <View style={[styles.groupIconContainer, isActive && styles.groupIconContainerActive]}>
+                            <Ionicons
+                                name="people"
+                                size={24}
+                                color={isActive ? theme.colors.primary : theme.colors.textSecondary}
+                            />
+                        </View>
+                        <View style={styles.groupCardInfo}>
+                            <View style={styles.groupCardTitleRow}>
+                                <Text style={[styles.groupCardName, isActive && styles.groupCardNameActive]} numberOfLines={1}>
+                                    {item.name}
+                                </Text>
+                                {isActive && (
+                                    <View style={styles.activeBadge}>
+                                        <Text style={styles.activeBadgeText}>Ativo</Text>
+                                    </View>
+                                )}
+                            </View>
+                            <View style={styles.groupCardMeta}>
+                                <View style={styles.groupCardMetaItem}>
+                                    <Ionicons name="key-outline" size={14} color={theme.colors.textMuted} />
+                                    <Text style={styles.groupCardCode}>{item.code}</Text>
+                                </View>
+                                <View style={styles.groupCardMetaItem}>
+                                    <Ionicons name="person-outline" size={14} color={theme.colors.textMuted} />
+                                    <Text style={styles.groupCardMembers}>
+                                        {item.members.length} {item.members.length === 1 ? 'membro' : 'membros'}
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    </View>
+                </View>
+
+                <View style={styles.groupCardActions}>
+                    <TouchableOpacity
+                        style={styles.groupCardAction}
+                        onPress={() => handleOpenMembersModal(item)}
+                    >
+                        <Ionicons name="settings-outline" size={18} color={theme.colors.textSecondary} />
+                        <Text style={styles.groupCardActionText}>Gerenciar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={styles.groupCardAction}
+                        onPress={() => handleShareCode(item)}
+                    >
+                        <Ionicons name="share-outline" size={18} color={theme.colors.textSecondary} />
+                        <Text style={styles.groupCardActionText}>Compartilhar</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        style={[styles.groupCardAction, styles.groupCardActionLast]}
+                        onPress={() => handleLeaveGroup(item)}
+                    >
+                        <Ionicons name="exit-outline" size={18} color={theme.colors.danger} />
+                        <Text style={[styles.groupCardActionText, styles.groupCardActionTextDanger]}>Sair</Text>
+                    </TouchableOpacity>
+                </View>
+            </TouchableOpacity>
+        );
+    };
+
+    if (loading) {
+        return (
+            <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color={theme.colors.primary} />
+            </View>
+        );
+    }
+
+    return (
+        <View style={[styles.container, { paddingTop: insets.top }]}>
+            <ScrollView style={styles.container} contentContainerStyle={[styles.content, { paddingBottom: 80 + insets.bottom }]}>
+
+                        {/* Grupos do Usuário */}
+                        {groups.length > 0 ? (
+                            <>
+                                <View style={styles.section}>
+                                    <Text style={styles.sectionTitle}>Meus Grupos</Text>
+                                    <FlatList
+                                        data={groups}
+                                        renderItem={renderGroupCard}
+                                        keyExtractor={(item) => item.id}
+                                        scrollEnabled={false}
+                                        contentContainerStyle={styles.groupsList}
+                                    />
+                                </View>
+
+                                {/* Gerenciar Grupo */}
+                                {selectedGroup && (
+                                    <View style={styles.manageCard}>
+                                        <View style={styles.manageCardHeader}>
+                                            <Ionicons name="settings" size={18} color={theme.colors.primary} />
+                                            <Text style={styles.manageCardTitle}>Gerenciar: {selectedGroup.name}</Text>
+                                        </View>
+
+                                        {/* Código */}
+                                        <View style={styles.modalSection}>
+                                            <Text style={styles.modalSectionTitle}>Código do Grupo</Text>
+                                            <View style={styles.codeContainer}>
+                                                <View style={styles.codeRow}>
+                                                    <Text style={styles.codeText}>{selectedGroup.code}</Text>
+                                                    {user?.uid === selectedGroup.ownerId && (
+                                                        <TouchableOpacity style={styles.regenerateButton} onPress={handleRegenerateCode}>
+                                                            <Ionicons name="refresh" size={18} color={theme.colors.white} />
+                                                            <Text style={styles.regenerateButtonText}>Alterar</Text>
+                                                        </TouchableOpacity>
+                                                    )}
+                                                </View>
+                                            </View>
+                                        </View>
+
+                                        {/* Membros */}
+                                        <View style={styles.modalSection}>
+                                            <Text style={styles.modalSectionTitle}>Membros ({selectedGroup.members.length})</Text>
+                                            {loadingMembers ? (
+                                                <ActivityIndicator size="small" color={theme.colors.primary} />
+                                            ) : (
+                                                <FlatList
+                                                    data={memberProfiles}
+                                                    keyExtractor={(item) => item.id}
+                                                    scrollEnabled={false}
+                                                    renderItem={({ item: member }) => {
+                                                        const isOwner = member.id === selectedGroup.ownerId;
+                                                        const isCurrentUser = member.id === user?.uid;
+                                                        const canRemove = user?.uid === selectedGroup.ownerId && !isOwner;
+                                                        return (
+                                                            <View style={styles.memberItem}>
+                                                                <View style={styles.memberInfo}>
+                                                                    <View style={[styles.memberAvatar, isOwner && styles.memberAvatarOwner]}>
+                                                                        <Ionicons name={isOwner ? 'star' : 'person'} size={18}
+                                                                            color={isOwner ? theme.colors.warning : theme.colors.textSecondary} />
+                                                                    </View>
+                                                                    <View style={styles.memberTextContainer}>
+                                                                        <Text style={styles.memberName}>
+                                                                            {member.displayName || member.email.split('@')[0]}
+                                                                            {isCurrentUser && ' (você)'}
+                                                                        </Text>
+                                                                        <Text style={styles.memberEmail}>{member.email}</Text>
+                                                                        {isOwner && <Text style={styles.ownerBadge}>Administrador</Text>}
+                                                                    </View>
+                                                                </View>
+                                                                {canRemove && (
+                                                                    <TouchableOpacity style={styles.removeMemberButton} onPress={() => handleRemoveMember(member)}>
+                                                                        <Ionicons name="trash-outline" size={18} color={theme.colors.danger} />
+                                                                    </TouchableOpacity>
+                                                                )}
+                                                            </View>
+                                                        );
+                                                    }}
+                                                    ListEmptyComponent={
+                                                        <Text style={styles.emptyMembersText}>Nenhum membro encontrado</Text>
+                                                    }
+                                                />
+                                            )}
+                                        </View>
+                                    </View>
+                                )}
+
+                            </>
+                        ) : (
+                            // Usuário não está em nenhum grupo
+                            <View>
+                                <View style={styles.welcomeCard}>
+                                    <Ionicons name="people-outline" size={64} color={theme.colors.primary} />
+                                    <Text style={styles.welcomeTitle}>Compartilhamento</Text>
+                                    <Text style={styles.welcomeText}>
+                                        Crie um grupo ou entre em um existente para compartilhar suas finanças com outras pessoas.
+                                    </Text>
+                                </View>
+                            </View>
+                        )}
+
+                        {/* Adicionar Grupo */}
+                        <View style={styles.addGroupSection}>
+                            <Text style={styles.addGroupSectionTitle}>Adicionar Grupo</Text>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Criar novo grupo</Text>
+                                <View style={styles.inputRow}>
+                                    <TextInput
+                                        style={[styles.input, { flex: 1 }]}
+                                        placeholder="Nome do grupo"
+                                        placeholderTextColor={theme.colors.textMuted}
+                                        value={groupName}
+                                        onChangeText={setGroupName}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.iconButton, styles.createButton, creating && styles.buttonDisabled]}
+                                        onPress={handleCreateGroup}
+                                        disabled={creating}
+                                    >
+                                        {creating ? (
+                                            <ActivityIndicator color={theme.colors.white} size="small" />
+                                        ) : (
+                                            <Ionicons name="add" size={22} color={theme.colors.white} />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                            <View style={styles.inputContainer}>
+                                <Text style={styles.inputLabel}>Entrar em grupo existente</Text>
+                                <View style={styles.inputRow}>
+                                    <TextInput
+                                        style={[styles.input, { flex: 1 }]}
+                                        placeholder="Código do grupo"
+                                        placeholderTextColor={theme.colors.textMuted}
+                                        value={joinCode}
+                                        onChangeText={setJoinCode}
+                                        autoCapitalize="characters"
+                                        maxLength={6}
+                                    />
+                                    <TouchableOpacity
+                                        style={[styles.iconButton, styles.joinButton, creating && styles.buttonDisabled]}
+                                        onPress={handleJoinGroup}
+                                        disabled={creating}
+                                    >
+                                        {creating ? (
+                                            <ActivityIndicator color={theme.colors.white} size="small" />
+                                        ) : (
+                                            <Ionicons name="enter-outline" size={22} color={theme.colors.white} />
+                                        )}
+                                    </TouchableOpacity>
+                                </View>
+                            </View>
+                        </View>
+
+            </ScrollView>
+
+        </View>
+    );
+}
