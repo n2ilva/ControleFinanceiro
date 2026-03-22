@@ -603,15 +603,12 @@ export const FirestoreService = {
         now,
       );
 
-      // Regra de negócio: carregar o saldo do mês anterior como receita no mês atual
-      const effectiveCurrentExpenses = current.totalExpenses - (current.futureExpensesTotal || 0);
+      // Saldo do mês = apenas receitas - despesas do mês (saldo anterior é somente sinalização)
       const currentWithCarryOver: MonthlyData = {
         ...current,
-        // manter totalIncome/totalExpenses como valores do mês selecionado (sem carry-over)
         totalIncome: current.totalIncome,
         totalExpenses: current.totalExpenses,
-        // balance considera o carry-over do mês anterior, mas não altera os totais exibidos
-        balance: current.totalIncome + previous.balance - effectiveCurrentExpenses,
+        balance: current.totalIncome - current.totalExpenses,
       };
 
         try {

@@ -45,8 +45,8 @@ export default function HomeScreen({ navigation }: any) {
             const { current, previous } = await FirestoreService.getMonthlyDataWithPrevious(currentMonth, currentYear);
             
             setTransactions(current.transactions);
-            // Calcular saldo total explicitamente: receitas do mês + saldo anterior - despesas efetivas
-            const computedBalance = (current.totalIncome || 0) + (previous.balance || 0) - (current.totalExpenses || 0);
+            // Saldo atual = somente receitas - despesas do mês corrente (saldo anterior é só sinalização)
+            const computedBalance = (current.totalIncome || 0) - (current.totalExpenses || 0);
             // eslint-disable-next-line no-console
             console.debug('[HomeScreen] monthlyData', { month: current.month, totalIncome: current.totalIncome, totalExpenses: current.totalExpenses, previousBalance: previous.balance, computedBalance });
             setMonthlyData({
@@ -327,7 +327,8 @@ export default function HomeScreen({ navigation }: any) {
             {/* Card de saldo */}
             <BalanceCard
                 totalBalance={totalBalance}
-                previousBalance={monthlyData.previousBalance}
+                futureExpensesTotal={monthlyData.futureExpensesTotal}
+                futureIncomeTotal={monthlyData.futureIncomeTotal}
                 totalIncome={monthlyData.totalIncome}
                 totalExpenses={monthlyData.totalExpenses}
             />
