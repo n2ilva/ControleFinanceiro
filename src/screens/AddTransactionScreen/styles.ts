@@ -292,6 +292,20 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.primary + '20',
         borderColor: theme.colors.primary,
     },
+    groupChip: {
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        marginRight: 8,
+        justifyContent: 'center' as const,
+    },
+    groupChipSelected: {
+        backgroundColor: theme.colors.primary + '20',
+        borderColor: theme.colors.primary,
+    },
     newCategoryBtn: {
         backgroundColor: theme.colors.primary,
         borderRadius: theme.borderRadius.md,

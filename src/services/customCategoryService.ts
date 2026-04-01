@@ -7,6 +7,7 @@ export interface CustomCategory {
     id: string;
     label: string;
     icon: string;
+    group?: string;
 }
 
 const AVAILABLE_ICONS = [

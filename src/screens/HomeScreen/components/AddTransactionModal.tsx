@@ -19,8 +19,9 @@ import { CreditCard, Transaction } from '../../../types';
 import { theme } from '../../../theme';
 import { auth } from '../../../config/firebase';
 import { CreditCardFirestoreService } from '../../../services/creditCardFirestoreService';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../../constants';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, EXPENSE_CATEGORY_GROUPS, INCOME_CATEGORY_GROUPS } from '../../../constants';
 import AddCardBottomSheet from '../../../components/AddCardBottomSheet';
+import { CategoryPicker } from '../../../components/CategoryPicker';
 import { getCustomCategories, addCustomCategory, AVAILABLE_ICONS, CustomCategory } from '../../../services/customCategoryService';
 
 interface AddTransactionModalProps {
@@ -51,8 +52,10 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
     const [showNewCategory, setShowNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryIcon, setNewCategoryIcon] = useState('bookmark');
+    const [newCategoryGroup, setNewCategoryGroup] = useState('');
 
     const baseCategories = type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+    const groups = type === 'expense' ? EXPENSE_CATEGORY_GROUPS : INCOME_CATEGORY_GROUPS;
     const categories = [...baseCategories, ...customCategories];
 
     // Reset form when modal opens
@@ -72,6 +75,7 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
             setShowNewCategory(false);
             setNewCategoryName('');
             setNewCategoryIcon('bookmark');
+            setNewCategoryGroup('');
             loadCards();
             loadCustomCategories();
         }
@@ -97,13 +101,14 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
             crossAlert('Erro', 'Já existe uma categoria com esse nome');
             return;
         }
-        const newCat: CustomCategory = { id, label: name, icon: newCategoryIcon };
+        const newCat: CustomCategory = { id, label: name, icon: newCategoryIcon, group: newCategoryGroup || 'Personalizadas' };
         await addCustomCategory(type, newCat);
         setCustomCategories(prev => [...prev, newCat]);
         setCategory(id);
         setShowNewCategory(false);
         setNewCategoryName('');
         setNewCategoryIcon('bookmark');
+        setNewCategoryGroup('');
     };
 
     const loadCards = async () => {
@@ -342,7 +347,7 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
                         style={styles.keyboardView}
                     >
                         <TouchableOpacity style={styles.modalContent} activeOpacity={1} onPress={() => {}}>
-                            <ScrollView showsVerticalScrollIndicator={false}>
+                            <ScrollView showsVerticalScrollIndicator={false} nestedScrollEnabled={true}>
                                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing.lg }}>
                                     <Text style={[styles.modalTitle, { marginBottom: 0 }]}>{title}</Text>
                                     <TouchableOpacity onPress={onClose}>
@@ -465,43 +470,16 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
                                     </View>
                                 )}
 
-                                {/* Categorias - Grid de chips */}
+                                {/* Categorias - Grid de chips com busca e agrupamento */}
                                 <Text style={[styles.label, { marginTop: theme.spacing.sm }]}>Categoria</Text>
-                                <ScrollView horizontal={false} style={{ maxHeight: 200, marginBottom: theme.spacing.md }}>
-                                    <View style={styles.categoryGrid}>
-                                        {categories.map((cat) => (
-                                            <TouchableOpacity
-                                                key={cat.id}
-                                                style={[
-                                                    styles.categoryChip,
-                                                    category === cat.id && styles.categoryChipSelected,
-                                                ]}
-                                                onPress={() => setCategory(cat.id)}
-                                            >
-                                                <Ionicons
-                                                    name={cat.icon as any}
-                                                    size={14}
-                                                    color={category === cat.id ? theme.colors.white : theme.colors.textSecondary}
-                                                />
-                                                <Text
-                                                    style={[
-                                                        styles.categoryChipText,
-                                                        category === cat.id && styles.categoryChipTextSelected,
-                                                    ]}
-                                                >
-                                                    {cat.label}
-                                                </Text>
-                                            </TouchableOpacity>
-                                        ))}
-                                        <TouchableOpacity
-                                            style={[styles.categoryChip, styles.newCategoryChip]}
-                                            onPress={() => setShowNewCategory(!showNewCategory)}
-                                        >
-                                            <Ionicons name="add-circle-outline" size={14} color={theme.colors.primary} />
-                                            <Text style={[styles.categoryChipText, { color: theme.colors.primary }]}>Nova</Text>
-                                        </TouchableOpacity>
-                                    </View>
-                                </ScrollView>
+                                <CategoryPicker
+                                    type={type}
+                                    selectedCategory={category}
+                                    onSelectCategory={setCategory}
+                                    customCategories={customCategories}
+                                    showAddButton={true}
+                                    onAddPress={() => setShowNewCategory(!showNewCategory)}
+                                />
 
                                 {/* Nova Categoria */}
                                 {showNewCategory && (
@@ -514,6 +492,34 @@ export function AddTransactionModal({ visible, type, month, year, onClose, onSuc
                                             onChangeText={setNewCategoryName}
                                             maxLength={30}
                                         />
+                                        <Text style={[styles.helperText, { marginBottom: 4 }]}>Grupo:</Text>
+                                        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: theme.spacing.sm }}>
+                                            {groups.map((g) => (
+                                                <TouchableOpacity
+                                                    key={g.title}
+                                                    style={[
+                                                        styles.groupChip,
+                                                        newCategoryGroup === g.title && styles.groupChipSelected,
+                                                    ]}
+                                                    onPress={() => setNewCategoryGroup(g.title)}
+                                                >
+                                                    <Text style={[styles.categoryChipText, newCategoryGroup === g.title && { color: theme.colors.primary, fontWeight: 'bold' }]}>
+                                                      {g.title}
+                                                    </Text>
+                                                </TouchableOpacity>
+                                            ))}
+                                            <TouchableOpacity
+                                                style={[
+                                                    styles.groupChip,
+                                                    newCategoryGroup === '' && styles.groupChipSelected,
+                                                ]}
+                                                onPress={() => setNewCategoryGroup('')}
+                                            >
+                                                <Text style={[styles.categoryChipText, newCategoryGroup === '' && { color: theme.colors.primary, fontWeight: 'bold' }]}>
+                                                  Outros
+                                                </Text>
+                                            </TouchableOpacity>
+                                        </ScrollView>
                                         <Text style={[styles.helperText, { marginBottom: 4 }]}>Ícone:</Text>
                                         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: theme.spacing.sm }}>
                                             {AVAILABLE_ICONS.map((icon) => (
@@ -717,6 +723,20 @@ const styles = StyleSheet.create({
         marginRight: 6,
     },
     iconChipSelected: {
+        backgroundColor: theme.colors.primary + '20',
+        borderColor: theme.colors.primary,
+    },
+    groupChip: {
+        paddingHorizontal: theme.spacing.md,
+        paddingVertical: 8,
+        borderRadius: 20,
+        backgroundColor: theme.colors.surface,
+        borderWidth: 1,
+        borderColor: theme.colors.border,
+        marginRight: 8,
+        justifyContent: 'center' as const,
+    },
+    groupChipSelected: {
         backgroundColor: theme.colors.primary + '20',
         borderColor: theme.colors.primary,
     },

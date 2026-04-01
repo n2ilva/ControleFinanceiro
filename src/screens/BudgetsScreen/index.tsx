@@ -7,7 +7,6 @@ import {
   RefreshControl,
   TextInput,
   Modal,
-  ScrollView,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -21,6 +20,7 @@ import { Budget, Transaction } from '../../types';
 import { theme } from '../../theme';
 import { formatCurrency } from '../../utils';
 import { EXPENSE_CATEGORIES, CATEGORY_ICONS, getCategoryLabel } from '../../constants';
+import { CategoryPicker } from '../../components/CategoryPicker';
 import styles from './styles';
 
 interface BudgetWithSpent extends Budget {
@@ -344,34 +344,12 @@ export default function BudgetsScreen() {
             </View>
 
             <Text style={styles.label}>Categoria</Text>
-            <ScrollView horizontal={false} style={{ maxHeight: 160, marginBottom: theme.spacing.md }}>
-              <View style={styles.categoryGrid}>
-                {availableCategories.map((cat) => (
-                  <TouchableOpacity
-                    key={cat.id}
-                    style={[
-                      styles.categoryChip,
-                      selectedCategory === cat.id && styles.categoryChipSelected,
-                    ]}
-                    onPress={() => setSelectedCategory(cat.id)}
-                  >
-                    <Ionicons
-                      name={cat.icon as any}
-                      size={14}
-                      color={selectedCategory === cat.id ? theme.colors.primary : theme.colors.textMuted}
-                    />
-                    <Text
-                      style={[
-                        styles.categoryChipText,
-                        selectedCategory === cat.id && styles.categoryChipTextSelected,
-                      ]}
-                    >
-                      {cat.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
+            <CategoryPicker
+              type="expense"
+              selectedCategory={selectedCategory}
+              onSelectCategory={setSelectedCategory}
+              filterIds={availableCategories.map(c => c.id)}
+            />
 
             <Text style={styles.label}>Limite mensal (R$)</Text>
             <TextInput

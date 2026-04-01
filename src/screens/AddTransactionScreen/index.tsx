@@ -21,7 +21,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import styles from './styles';
 import AddCardBottomSheet from '../../components/AddCardBottomSheet';
 import { getCustomCategories, addCustomCategory, AVAILABLE_ICONS, CustomCategory } from '../../services/customCategoryService';
-import { EXPENSE_CATEGORIES, INCOME_CATEGORIES } from '../../constants';
+import { CategoryPicker } from '../../components/CategoryPicker';
+import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, EXPENSE_CATEGORY_GROUPS, INCOME_CATEGORY_GROUPS } from '../../constants';
 
 export default function AddTransactionScreen({ navigation, route }: any) {
     const [description, setDescription] = useState('');
@@ -44,6 +45,9 @@ export default function AddTransactionScreen({ navigation, route }: any) {
     const [showNewCategory, setShowNewCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
     const [newCategoryIcon, setNewCategoryIcon] = useState('bookmark');
+    const [newCategoryGroup, setNewCategoryGroup] = useState('');
+
+    const groups = type === 'expense' ? EXPENSE_CATEGORY_GROUPS : INCOME_CATEGORY_GROUPS;
 
     // Aplicar parâmetros pré-selecionados
     useEffect(() => {
@@ -122,13 +126,14 @@ export default function AddTransactionScreen({ navigation, route }: any) {
             crossAlert('Erro', 'J\u00e1 existe uma categoria com esse nome');
             return;
         }
-        const newCat: CustomCategory = { id, label: name, icon: newCategoryIcon };
+        const newCat: CustomCategory = { id, label: name, icon: newCategoryIcon, group: newCategoryGroup || 'Personalizadas' };
         await addCustomCategory(type, newCat);
         setCustomCategories(prev => [...prev, newCat]);
         setCategory(id);
         setShowNewCategory(false);
         setNewCategoryName('');
         setNewCategoryIcon('bookmark');
+        setNewCategoryGroup('');
     };
 
     const loadCards = async () => {
@@ -682,48 +687,14 @@ export default function AddTransactionScreen({ navigation, route }: any) {
 
                 <View style={styles.section}>
                     <Text style={styles.label}>Categoria</Text>
-                    {(() => {
-                        const list = [...(type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES), ...customCategories.map(c => ({ ...c, group: 'Personalizadas' }))];
-
-                        return (
-                            <View style={[styles.categoryChipWrap, { marginTop: 8 }]}>
-                                {list.map((cat) => {
-                                    const isSelected = category === cat.id;
-                                    return (
-                                        <TouchableOpacity
-                                            key={cat.id}
-                                            style={[
-                                                styles.categoryChip,
-                                                isSelected && styles.categoryChipSelected,
-                                            ]}
-                                            onPress={() => setCategory(cat.id)}
-                                        >
-                                            <Ionicons
-                                                name={cat.icon as any}
-                                                size={12}
-                                                color={isSelected ? theme.colors.white : theme.colors.textSecondary}
-                                            />
-                                            <Text
-                                                style={[
-                                                    styles.categoryChipText,
-                                                    isSelected && styles.categoryChipTextSelected,
-                                                ]}
-                                            >
-                                                {cat.label}
-                                            </Text>
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        );
-                    })()}
-                    <TouchableOpacity
-                        style={styles.addCategoryButton}
-                        onPress={() => setShowNewCategory(!showNewCategory)}
-                    >
-                        <Ionicons name="add-circle-outline" size={18} color={theme.colors.primary} />
-                        <Text style={styles.addCategoryButtonText}>Nova Categoria</Text>
-                    </TouchableOpacity>
+                    <CategoryPicker
+                        type={type}
+                        selectedCategory={category}
+                        onSelectCategory={setCategory}
+                        customCategories={customCategories}
+                        showAddButton={true}
+                        onAddPress={() => setShowNewCategory(!showNewCategory)}
+                    />
                     {showNewCategory && (
                         <View style={styles.newCategoryForm}>
                             <TextInput
@@ -734,6 +705,34 @@ export default function AddTransactionScreen({ navigation, route }: any) {
                                 onChangeText={setNewCategoryName}
                                 maxLength={30}
                             />
+                            <Text style={[styles.helperText, { marginBottom: 4 }]}>Grupo:</Text>
+                                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: theme.spacing.sm }}>
+                                {groups.map((g) => (
+                                    <TouchableOpacity
+                                        key={g.title}
+                                        style={[
+                                            styles.groupChip,
+                                            newCategoryGroup === g.title && styles.groupChipSelected,
+                                        ]}
+                                        onPress={() => setNewCategoryGroup(g.title)}
+                                    >
+                                        <Text style={[styles.categoryChipText, newCategoryGroup === g.title && { color: theme.colors.primary, fontWeight: 'bold' }]}>
+                                          {g.title}
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                                <TouchableOpacity
+                                    style={[
+                                        styles.groupChip,
+                                        newCategoryGroup === '' && styles.groupChipSelected,
+                                    ]}
+                                    onPress={() => setNewCategoryGroup('')}
+                                >
+                                    <Text style={[styles.categoryChipText, newCategoryGroup === '' && { color: theme.colors.primary, fontWeight: 'bold' }]}>
+                                      Outros
+                                    </Text>
+                                </TouchableOpacity>
+                            </ScrollView>
                             <Text style={[styles.helperText, { marginBottom: 4 }]}>Ícone:</Text>
                             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: theme.spacing.sm }}>
                                 {AVAILABLE_ICONS.map((icon) => (

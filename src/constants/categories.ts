@@ -277,6 +277,28 @@ export const EXPENSE_CATEGORY_GROUPS = [
 ];
 
 /**
+ * Grupos de categorias de receitas (para exibição organizada)
+ */
+export const INCOME_CATEGORY_GROUPS = [
+    {
+        title: 'Principais',
+        categories: ['salario', 'decimoTerceiro', 'ferias', 'bonus', 'participacaoLucros'],
+    },
+    {
+        title: 'Trabalho Extra',
+        categories: ['freelance', 'consultoria', 'comissoes', 'horasExtras'],
+    },
+    {
+        title: 'Investimentos',
+        categories: ['rendimentos', 'investimentos', 'dividendos', 'criptomoedas'],
+    },
+    {
+        title: 'Outros',
+        categories: ['aluguelRecebido', 'vendas', 'reembolso', 'deposito', 'heranca', 'premio', 'extra', 'outros'],
+    },
+];
+
+/**
  * Obtém o ícone de uma categoria
  */
 export const getCategoryIcon = (category: string): string => {
