@@ -1,236 +1,303 @@
 # 💰 Controle Financeiro
 
-Uma aplicação React Native moderna e elegante para controle financeiro pessoal, com foco em gestão de despesas recorrentes e análise de gastos.
+Aplicação mobile e web completa para **controle financeiro pessoal e compartilhado**, desenvolvida com React Native + Expo e Firebase. Inclui uma API REST para análise de dados.
+
+---
+
+## 📑 Índice
+
+- [Funcionalidades](#-funcionalidades)
+- [Stack Tecnológica](#-stack-tecnológica)
+- [Estrutura do Projeto](#-estrutura-do-projeto)
+- [Instalação e Execução](#-instalação-e-execução)
+- [API REST — Analytics](#-api-rest--analytics)
+- [Segurança](#-segurança)
+- [Deploy](#-deploy)
+- [Licença](#-licença)
+
+---
 
 ## ✨ Funcionalidades
 
 ### 📊 Gestão de Transações
+- Adicionar receitas e despesas com categorias personalizáveis
+- Transações recorrentes com geração automática mensal
+- Parcelamentos com controle de parcelas (ex: 1/3, 2/3, 3/3)
+- Navegação entre meses com resumo financeiro
+- Tags customizáveis para classificação extra
+- Busca por descrição com fuzzy search
 
-- ✅ Adicionar receitas e despesas
-- ✅ Marcar transações como pagas/não pagas
-- ✅ Categorização automática com cores visuais
-- ✅ Suporte a transações recorrentes
-- ✅ Navegação entre meses
-- ✅ Exclusão de transações
+### 💳 Cartões de Crédito e Débito
+- Cadastro com nome, cor, dia de vencimento e limite
+- Acompanhamento de gastos por cartão vs limite
+- Controle de pagamento de faturas mensais
+- Suporte a cartões de crédito e débito
 
-### 🔄 Transações Recorrentes
+### 💵 Salários e Receitas
+- Cadastro de múltiplos salários (CLT, freelance, bonus, 13º, férias)
+- Ajuste mensal de valores (horas extras, descontos)
+- Inclusão automática na receita do mês
 
-- Despesas recorrentes (água, energia, internet, etc.) são automaticamente duplicadas para o próximo mês
-- Facilita o planejamento financeiro mensal
-- Previsão de gastos futuros baseada em recorrências
+### 🎯 Metas Financeiras
+- Criar metas com valor alvo e prazo
+- Acompanhar progresso com aportes parciais
+- Indicador visual de progresso
 
-### 📈 Análises e Gráficos
+### 📋 Orçamentos
+- Definir limites mensais por categoria
+- Copiar orçamentos de um mês para outro
 
-- **Gráfico de Tendência**: Visualize receitas e despesas dos últimos 6 meses
-- **Gráfico de Pizza**: Distribuição de gastos por categoria
-- **Previsão do Próximo Mês**: Baseada em despesas recorrentes
-- **Detalhamento por Categoria**: Valores e percentuais de cada categoria
+### 👨‍👩‍👧‍👦 Grupos Compartilhados
+- Criar ou entrar em grupos com código de convite
+- Compartilhar transações, salários e cartões entre membros
+- Alternar entre modo pessoal e modo grupo
 
-### 🎨 Categorias Disponíveis
+### 📈 Gráficos e Análises
+- Gráfico de tendência dos últimos 6 meses
+- Distribuição de gastos por categoria (pizza)
+- Previsão do próximo mês baseada em recorrências
+- Detalhamento por categoria com valores e percentuais
 
-- 💧 Água
-- ⚡ Energia
-- 📡 Internet
-- 🍔 Alimentação
-- 🚗 Transporte
-- 🏥 Saúde
-- 📚 Educação
-- 🎮 Lazer
-- 📦 Outros
+### 🎨 Categorias
+30+ categorias nativas com ícones e cores:
 
-## 🚀 Como Executar
+| | | | |
+|---|---|---|---|
+| 💧 Água | ⚡ Energia | 📡 Internet | 📞 Telefone |
+| 🍔 Alimentação | 🛒 Mercado | ⛽ Combustível | 🚗 Transporte |
+| 🏥 Saúde | 📚 Educação | 🎮 Lazer | 🏠 Moradia |
+| 👕 Vestuário | 🐾 Pets | 💊 Farmácia | 🎁 Presentes |
+| + Categorias customizáveis criadas pelo usuário |
 
-### Pré-requisitos
+---
 
-- Node.js instalado
-- Expo CLI
-- Expo Go app no seu dispositivo móvel (opcional)
+## 🛠️ Stack Tecnológica
 
-### Instalação
+### App Mobile/Web
+| Tecnologia | Versão | Uso |
+|------------|--------|-----|
+| React Native | 0.81 | Framework mobile |
+| Expo | 54 | Plataforma de desenvolvimento |
+| TypeScript | 5.9 | Tipagem estática |
+| Firebase Auth | 12.8 | Autenticação |
+| Firebase Firestore | 12.8 | Banco de dados |
+| React Navigation | 7.x | Navegação entre telas |
+| React Native Chart Kit | 6.12 | Gráficos e visualizações |
+| AsyncStorage | 2.2 | Armazenamento local |
 
-1. Clone o repositório:
-```bash
-git clone <seu-repositorio>
-cd ControleFinanceiro
-```
+### API Analytics
+| Tecnologia | Versão | Uso |
+|------------|--------|-----|
+| Express | 5.x | Framework HTTP |
+| Firebase Admin SDK | 13.x | Acesso admin ao Firestore |
+| TypeScript | 6.x | Tipagem |
+| ts-node-dev | 2.x | Hot reload em dev |
 
-2. Instale as dependências:
-```bash
-npm install
-```
-
-3. **Configure as variáveis de ambiente:**
-```bash
-cp .env.example .env
-```
-Edite o arquivo `.env` e adicione suas credenciais do Firebase.
-
-4. Iniciar o servidor de desenvolvimento:
-
-```bash
-npm start
-```
-
-3. Executar em diferentes plataformas:
-
-```bash
-# Android
-npm run android
-
-# iOS
-npm run ios
-
-# Web
-npm run web
-
-# Build para produção (GitHub Pages)
-npm run build:web
-```
-
-## 🔒 Segurança
-
-Este projeto implementa diversas camadas de segurança:
-
-- 🔐 Variáveis de ambiente para credenciais sensíveis
-- 🛡️ Regras de segurança do Firebase (Firestore Rules)
-- 🚨 Proteção contra self-XSS no console
-- 🔑 Autenticação Firebase
-
-**Leia o arquivo [SECURITY.md](SECURITY.md) para mais detalhes sobre configuração de segurança.**
-
-## 🌐 Deploy
-
-### GitHub Pages
-
-O projeto está configurado para deploy automático no GitHub Pages via GitHub Actions:
-
-1. No GitHub, abra **Settings > Pages**
-2. Em **Build and deployment**, selecione **Source: GitHub Actions**
-3. Faça push na branch `main`
-4. Acesse: `https://seuusuario.github.io/controlefinanceiro`
-
-## 🎨 Design
-
-A aplicação utiliza um **tema dark moderno** com:
-
-- Paleta de cores vibrantes e harmoniosas
-- Gradientes suaves
-- Sombras e elevações para profundidade
-- Micro-animações para melhor UX
-- Design responsivo e intuitivo
-
-### Cores Principais
-
-- **Primary**: Índigo (#6366F1)
-- **Success**: Verde (#10B981)
-- **Danger**: Vermelho (#EF4444)
-- **Background**: Slate escuro (#0F172A)
+---
 
 ## 📱 Estrutura do Projeto
 
 ```
-src/
-├── navigation/        # Configuração de navegação
-├── screens/          # Telas da aplicação
-│   ├── HomeScreen.tsx           # Lista de transações
-│   ├── AddTransactionScreen.tsx # Adicionar transação
-│   └── ChartsScreen.tsx         # Gráficos e análises
-├── services/         # Serviços (storage, etc)
-├── types/           # Definições TypeScript
-└── theme/           # Sistema de design
+ControleFinanceiro/
+├── App.tsx                    # Entry point do app
+├── app.json                   # Configuração Expo
+├── firestore.rules            # Regras de segurança do Firestore
+├── src/
+│   ├── components/            # Componentes reutilizáveis
+│   │   ├── AddCardBottomSheet.tsx
+│   │   └── PageHeader.tsx
+│   ├── config/
+│   │   ├── firebase.ts        # Conexão Firebase (client SDK)
+│   │   ├── security.ts        # Proteção anti-XSS no console
+│   │   └── webAutofill.ts     # Fix de estilos autofill web
+│   ├── constants/
+│   │   └── categories.ts      # 30+ categorias com ícones/cores
+│   ├── contexts/
+│   │   ├── AuthContext.tsx     # Contexto de autenticação
+│   │   └── ThemeContext.tsx    # Contexto de tema (dark/light)
+│   ├── hooks/
+│   │   └── useResponsive.ts   # Hook de responsividade web/mobile
+│   ├── navigation/
+│   │   └── index.tsx           # Navegação com tabs e stacks
+│   ├── screens/               # 15 telas
+│   │   ├── HomeScreen/        # Dashboard principal
+│   │   ├── AddTransactionScreen/
+│   │   ├── EditTransactionScreen/
+│   │   ├── ChartsScreen/      # Gráficos e análises
+│   │   ├── CreditCardsScreen/ # Gestão de cartões
+│   │   ├── CardDetailsScreen/
+│   │   ├── CardMonthDetailsScreen/
+│   │   ├── SalariesScreen/    # Gestão de salários
+│   │   ├── AddSalaryScreen/
+│   │   ├── BudgetsScreen/     # Orçamentos
+│   │   ├── GoalsScreen/       # Metas financeiras
+│   │   ├── GroupScreen/       # Grupos compartilhados
+│   │   ├── SettingsScreen/    # Configurações
+│   │   ├── LoginScreen/
+│   │   └── RegisterScreen/
+│   ├── services/              # Camada de dados
+│   │   ├── authService.ts     # Autenticação Firebase
+│   │   ├── firestoreService.ts # Transações (25KB, serviço principal)
+│   │   ├── creditCardFirestoreService.ts
+│   │   ├── salaryFirestoreService.ts
+│   │   ├── budgetService.ts
+│   │   ├── goalService.ts
+│   │   ├── groupService.ts
+│   │   ├── customCategoryService.ts
+│   │   ├── salaryService.ts
+│   │   └── storage.ts         # AsyncStorage helpers
+│   ├── theme/
+│   │   └── index.ts           # Design tokens e cores
+│   ├── types/
+│   │   └── index.ts           # Interfaces TypeScript
+│   └── utils/
+│       ├── alert.ts           # Alertas cross-platform
+│       ├── formatters.ts      # Formatação de moeda/data
+│       └── fuzzySearch.ts     # Busca inteligente
+│
+├── api/                       # API REST Analytics
+│   ├── src/
+│   │   ├── config/firebase.ts         # Firebase Admin SDK
+│   │   ├── controllers/analytics.controller.ts
+│   │   ├── middleware/auth.ts         # API Key auth
+│   │   ├── routes/analytics.routes.ts
+│   │   └── index.ts                   # Servidor Express
+│   ├── serviceAccountKey.json         # (não commitado)
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── assets/                    # Ícones e splash screen
+├── docs/                      # Build web para GitHub Pages
+└── SECURITY.md                # Documentação de segurança
 ```
 
-## 💾 Armazenamento
+---
 
-Os dados são armazenados no **Firebase Firestore**, garantindo:
+## 🚀 Instalação e Execução
 
-- ☁️ Sincronização em tempo real
-- 🔐 Autenticação segura
-- 📱 Acesso multi-dispositivo
-- 🔄 Backup automático na nuvem
+### Pré-requisitos
+
+- [Node.js](https://nodejs.org/) 18+
+- [Expo CLI](https://docs.expo.dev/get-started/installation/) (`npm install -g expo-cli`)
+- Expo Go no dispositivo (opcional, para teste mobile)
+
+### 1. Clone e instale
+
+```bash
+git clone https://github.com/n2ilva/ControleFinanceiro.git
+cd ControleFinanceiro
+npm install
+```
+
+### 2. Configure as variáveis de ambiente
+
+```bash
+cp .env.example .env
+```
+
+Edite o `.env` com suas credenciais do Firebase:
+```env
+EXPO_PUBLIC_FIREBASE_API_KEY=sua-api-key
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=seu-projeto.firebaseapp.com
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=seu-projeto
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=seu-projeto.firebasestorage.app
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=123456789
+EXPO_PUBLIC_FIREBASE_APP_ID=1:123456789:android:abc123
+```
+
+### 3. Execute
+
+```bash
+# Servidor de desenvolvimento
+npm start
+
+# Plataformas específicas
+npm run android    # Android (Expo Go ou emulador)
+npm run ios        # iOS (simulador, apenas macOS)
+npm run web        # Web (navegador)
+
+# Build web para produção
+npm run build:web
+```
+
+---
 
 ## 📡 API REST — Analytics
 
-O projeto inclui uma **API REST** na pasta `api/` que expõe dados analíticos completos dos usuários do app, conectando diretamente ao Firebase via Admin SDK.
+O projeto inclui uma **API REST** na pasta `api/` que expõe dados analíticos completos dos usuários, conectando ao Firebase via Admin SDK.
 
-### 🚀 Setup da API
+### Setup da API
 
-1. **Obter credenciais do Firebase Admin SDK:**
-   - Acesse o [Firebase Console](https://console.firebase.google.com/) → seu projeto
-   - Vá em **⚙️ Configurações do projeto** → **Contas de serviço**
-   - Clique em **"Gerar nova chave privada"**
-   - Salve o arquivo como `api/serviceAccountKey.json`
-
-2. **Instalar e rodar:**
 ```bash
+# 1. Obtenha o Service Account Key no Firebase Console:
+#    ⚙️ Configurações > Contas de serviço > Gerar nova chave privada
+#    Salve como: api/serviceAccountKey.json
+
+# 2. Instale e rode
 cd api
 npm install
 npm run dev
 ```
 
-A API estará disponível em `http://localhost:3000`
+> A API roda em `http://localhost:3000`
 
-### 🔐 Autenticação
+### Autenticação
 
-Todas as rotas `/api/analytics/*` podem ser protegidas por API Key.
-
-Para ativar, crie `api/.env` com:
+Proteja a API criando `api/.env`:
 ```env
 PORT=3000
-API_KEY=sua-chave-secreta-aqui
+API_KEY=sua-chave-secreta
 ```
 
-Envie a chave no header das requisições:
+Envie o header nas requisições:
 ```
-x-api-key: sua-chave-secreta-aqui
+x-api-key: sua-chave-secreta
 ```
 
 > Sem `API_KEY` configurada, a API roda em modo aberto (dev).
 
-### 📋 Endpoints Disponíveis
+### Endpoints
 
 | Método | Rota | Descrição |
 |--------|------|-----------|
-| `GET` | `/health` | Health check (sem autenticação) |
-| `GET` | `/api/analytics` | **Dashboard geral** — visão completa agregada |
+| `GET` | `/health` | Health check (sem auth) |
+| `GET` | `/api/analytics` | Dashboard geral agregado |
 | `GET` | `/api/analytics/users` | Métricas individuais por usuário |
 | `GET` | `/api/analytics/transactions` | Transações (paginadas, filtráveis) |
-| `GET` | `/api/analytics/credit-cards` | Cartões de crédito com uso e % do limite |
+| `GET` | `/api/analytics/credit-cards` | Cartões com uso e % do limite |
 | `GET` | `/api/analytics/salaries` | Salários cadastrados |
 | `GET` | `/api/analytics/goals` | Metas financeiras com progresso |
 | `GET` | `/api/analytics/budgets` | Orçamentos por categoria |
 | `GET` | `/api/analytics/groups` | Grupos e membros |
 
-### 📊 Dashboard Geral (`GET /api/analytics`)
+### Dashboard Geral (`GET /api/analytics`)
 
-Retorna análise completa com:
-- **Resumo geral** — total de usuários, transações, receita/despesa bruta, saldo global, recorrentes, parcelamentos
-- **Médias por usuário** — receita, despesa, saldo, salário, saldo mensal
-- **Categorias** — todas listadas, top 10 mais usadas, top 10 maior valor (receita e despesa)
-- **Rankings** — receitas e despesas mais adicionadas (frequência), despesas mais caras (valor)
-- **Tags** — total distintas, mais usadas
-- **Cartões de crédito** — limite total, gasto total, detalhes por cartão com % do limite
-- **Salários** — ativos vs inativos, soma, tipos
-- **Orçamentos** — total criados, categorias com soma de limites
-- **Metas** — total, concluídas, taxa de conclusão, progresso geral
-- **Grupos** — total, membros, média de membros por grupo
-- **Evolução mensal** — receita, despesa e saldo por mês
+Retorna análise completa:
+- **Resumo** — total de usuários, transações, receita/despesa bruta, saldo global
+- **Médias por usuário** — receita, despesa, saldo, salário mensal
+- **Categorias** — todas com valores, top 10 mais usadas, top 10 maiores valores
+- **Rankings** — receitas/despesas mais frequentes e mais caras
+- **Cartões** — limite total, gasto total, detalhes por cartão com %
+- **Salários** — ativos, inativos, tipos
+- **Orçamentos** — categorias com limites
+- **Metas** — total, concluídas, progresso geral
+- **Grupos** — total, membros
+- **Evolução mensal** — gráfico de receita × despesa × saldo
 
-### 🔎 Filtros de Transações (`GET /api/analytics/transactions`)
+### Filtros de Transações
 
-| Parâmetro | Tipo | Descrição |
-|-----------|------|-----------|
-| `type` | string | `income` ou `expense` |
-| `category` | string | Filtrar por categoria |
-| `limit` | number | Quantidade por página (padrão: 100) |
-| `offset` | number | Pular N resultados (padrão: 0) |
-
-**Exemplo:**
 ```
 GET /api/analytics/transactions?type=expense&category=alimentacao&limit=50&offset=0
 ```
 
-### 💡 Exemplo de Resposta (`/api/analytics`)
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `type` | string | `income` ou `expense` |
+| `category` | string | Nome da categoria |
+| `limit` | number | Itens por página (padrão: 100) |
+| `offset` | number | Pular N resultados (padrão: 0) |
+
+### Exemplo de Resposta
 
 ```json
 {
@@ -240,54 +307,99 @@ GET /api/analytics/transactions?type=expense&category=alimentacao&limit=50&offse
     "totalTransacoes": 678,
     "totalReceitaBruta": 298017.37,
     "totalDespesaBruta": 134222.43,
-    "saldoGlobal": 163794.94,
-    "totalTransacoesRecorrentes": 376,
-    "totalParcelamentos": 36
+    "saldoGlobal": 163794.94
   },
   "mediasPorUsuario": {
     "mediaReceitaPorUsuario": 59603.47,
     "mediaDespesaPorUsuario": 26844.49,
     "mediaSaldoFinalPorUsuario": 32758.98
-  },
-  "categorias": { "..." },
-  "rankings": { "..." },
-  "cartoesDeCredito": { "..." },
-  "evolucaoMensal": [ "..." ]
+  }
 }
 ```
 
-### 📦 Scripts da API
+### Scripts da API
 
 | Comando | Descrição |
 |---------|-----------|
-| `npm run dev` | Inicia em modo desenvolvimento (hot reload) |
-| `npm run build` | Compila TypeScript para JavaScript |
-| `npm start` | Inicia a versão compilada (produção) |
-
-### 🌐 Deploy da API
-
-Para deploy em produção (Railway, Render, Google Cloud Run, etc.):
-
-1. Configure `GOOGLE_APPLICATION_CREDENTIALS` com o caminho do JSON de service account
-2. Configure `API_KEY` com uma chave forte
-3. Execute `npm run build && npm start`
+| `npm run dev` | Dev com hot reload |
+| `npm run build` | Compila para JS |
+| `npm start` | Produção (JS compilado) |
 
 ---
 
-## 🔮 Funcionalidades Futuras
+## 🔒 Segurança
 
-- [ ] Exportação de relatórios em PDF
-- [x] ~~Backup na nuvem~~ (Firebase Firestore)
-- [ ] Múltiplas contas/carteiras
-- [x] ~~Metas de economia~~ (implementado)
-- [ ] Notificações de vencimento
-- [x] ~~Sincronização entre dispositivos~~ (Firebase)
-- [x] ~~API REST para análise de dados~~ (implementado)
+### Camadas de Proteção
+
+| Camada | Descrição |
+|--------|-----------|
+| 🔑 Firebase Auth | Login com email/senha, mensagens de erro traduzidas |
+| 🛡️ Firestore Rules | Isolamento por usuário + acesso por grupo (ver `firestore.rules`) |
+| 🔐 Variáveis de ambiente | `.env` não commitado, fallback via `app.json` |
+| 🚨 Anti Self-XSS | Proteção do console em produção |
+| 🔒 API Key | Middleware de auth na API REST |
+| 📋 Service Account | `serviceAccountKey.json` no `.gitignore` |
+
+### Firestore Rules
+
+As regras garantem:
+- **Dados pessoais**: cada usuário acessa apenas seus documentos
+- **Dados de grupo**: membros do grupo compartilham transações, salários e cartões
+- **Grupos**: apenas membros leem, apenas admin deleta
+- **Perfil**: cada usuário edita apenas seu próprio perfil
+- **Regra padrão**: tudo é negado por padrão (deny-all)
+
+> Para mais detalhes, veja [SECURITY.md](SECURITY.md) e [firestore.rules](firestore.rules).
+
+---
+
+## 🌐 Deploy
+
+### App Web — GitHub Pages
+
+1. No GitHub, abra **Settings > Pages**
+2. Em **Source**, selecione **GitHub Actions**
+3. Faça push na branch `main`
+4. Acesse: `https://n2ilva.github.io/ControleFinanceiro`
+
+### App Mobile — EAS Build
+
+```bash
+npx eas build --platform android --profile preview
+```
+
+### API REST — Produção
+
+Para deploy em Railway, Render, Google Cloud Run, etc.:
+
+```bash
+cd api
+npm run build
+npm start
+```
+
+Configure as variáveis de ambiente:
+- `GOOGLE_APPLICATION_CREDENTIALS` — caminho do service account JSON
+- `API_KEY` — chave de acesso à API
+- `PORT` — porta do servidor (padrão: 3000)
+
+---
+
+## 🎨 Design
+
+Tema **dark moderno** com:
+- Paleta baseada em Índigo (#6366F1) com tons de Slate
+- Gradientes suaves e sombras para profundidade
+- Micro-animações para melhor UX
+- Layout responsivo (mobile + web)
+- Suporte a tema claro/escuro
+
+---
 
 ## 📄 Licença
 
-Este projeto foi criado para fins educacionais e de demonstração.
+Este projeto foi criado para fins educacionais e de uso pessoal.
 
 ---
 
-Desenvolvido com ❤️ usando React Native + Expo
+Desenvolvido com ❤️ usando React Native + Expo + Firebase
