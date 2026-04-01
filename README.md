@@ -149,14 +149,140 @@ Os dados são armazenados no **Firebase Firestore**, garantindo:
 - 📱 Acesso multi-dispositivo
 - 🔄 Backup automático na nuvem
 
+## 📡 API REST — Analytics
+
+O projeto inclui uma **API REST** na pasta `api/` que expõe dados analíticos completos dos usuários do app, conectando diretamente ao Firebase via Admin SDK.
+
+### 🚀 Setup da API
+
+1. **Obter credenciais do Firebase Admin SDK:**
+   - Acesse o [Firebase Console](https://console.firebase.google.com/) → seu projeto
+   - Vá em **⚙️ Configurações do projeto** → **Contas de serviço**
+   - Clique em **"Gerar nova chave privada"**
+   - Salve o arquivo como `api/serviceAccountKey.json`
+
+2. **Instalar e rodar:**
+```bash
+cd api
+npm install
+npm run dev
+```
+
+A API estará disponível em `http://localhost:3000`
+
+### 🔐 Autenticação
+
+Todas as rotas `/api/analytics/*` podem ser protegidas por API Key.
+
+Para ativar, crie `api/.env` com:
+```env
+PORT=3000
+API_KEY=sua-chave-secreta-aqui
+```
+
+Envie a chave no header das requisições:
+```
+x-api-key: sua-chave-secreta-aqui
+```
+
+> Sem `API_KEY` configurada, a API roda em modo aberto (dev).
+
+### 📋 Endpoints Disponíveis
+
+| Método | Rota | Descrição |
+|--------|------|-----------|
+| `GET` | `/health` | Health check (sem autenticação) |
+| `GET` | `/api/analytics` | **Dashboard geral** — visão completa agregada |
+| `GET` | `/api/analytics/users` | Métricas individuais por usuário |
+| `GET` | `/api/analytics/transactions` | Transações (paginadas, filtráveis) |
+| `GET` | `/api/analytics/credit-cards` | Cartões de crédito com uso e % do limite |
+| `GET` | `/api/analytics/salaries` | Salários cadastrados |
+| `GET` | `/api/analytics/goals` | Metas financeiras com progresso |
+| `GET` | `/api/analytics/budgets` | Orçamentos por categoria |
+| `GET` | `/api/analytics/groups` | Grupos e membros |
+
+### 📊 Dashboard Geral (`GET /api/analytics`)
+
+Retorna análise completa com:
+- **Resumo geral** — total de usuários, transações, receita/despesa bruta, saldo global, recorrentes, parcelamentos
+- **Médias por usuário** — receita, despesa, saldo, salário, saldo mensal
+- **Categorias** — todas listadas, top 10 mais usadas, top 10 maior valor (receita e despesa)
+- **Rankings** — receitas e despesas mais adicionadas (frequência), despesas mais caras (valor)
+- **Tags** — total distintas, mais usadas
+- **Cartões de crédito** — limite total, gasto total, detalhes por cartão com % do limite
+- **Salários** — ativos vs inativos, soma, tipos
+- **Orçamentos** — total criados, categorias com soma de limites
+- **Metas** — total, concluídas, taxa de conclusão, progresso geral
+- **Grupos** — total, membros, média de membros por grupo
+- **Evolução mensal** — receita, despesa e saldo por mês
+
+### 🔎 Filtros de Transações (`GET /api/analytics/transactions`)
+
+| Parâmetro | Tipo | Descrição |
+|-----------|------|-----------|
+| `type` | string | `income` ou `expense` |
+| `category` | string | Filtrar por categoria |
+| `limit` | number | Quantidade por página (padrão: 100) |
+| `offset` | number | Pular N resultados (padrão: 0) |
+
+**Exemplo:**
+```
+GET /api/analytics/transactions?type=expense&category=alimentacao&limit=50&offset=0
+```
+
+### 💡 Exemplo de Resposta (`/api/analytics`)
+
+```json
+{
+  "geradoEm": "2026-04-01T11:43:16.174Z",
+  "resumoGeral": {
+    "totalUsuarios": 5,
+    "totalTransacoes": 678,
+    "totalReceitaBruta": 298017.37,
+    "totalDespesaBruta": 134222.43,
+    "saldoGlobal": 163794.94,
+    "totalTransacoesRecorrentes": 376,
+    "totalParcelamentos": 36
+  },
+  "mediasPorUsuario": {
+    "mediaReceitaPorUsuario": 59603.47,
+    "mediaDespesaPorUsuario": 26844.49,
+    "mediaSaldoFinalPorUsuario": 32758.98
+  },
+  "categorias": { "..." },
+  "rankings": { "..." },
+  "cartoesDeCredito": { "..." },
+  "evolucaoMensal": [ "..." ]
+}
+```
+
+### 📦 Scripts da API
+
+| Comando | Descrição |
+|---------|-----------|
+| `npm run dev` | Inicia em modo desenvolvimento (hot reload) |
+| `npm run build` | Compila TypeScript para JavaScript |
+| `npm start` | Inicia a versão compilada (produção) |
+
+### 🌐 Deploy da API
+
+Para deploy em produção (Railway, Render, Google Cloud Run, etc.):
+
+1. Configure `GOOGLE_APPLICATION_CREDENTIALS` com o caminho do JSON de service account
+2. Configure `API_KEY` com uma chave forte
+3. Execute `npm run build && npm start`
+
+---
+
 ## 🔮 Funcionalidades Futuras
 
 - [ ] Exportação de relatórios em PDF
-- [ ] Backup na nuvem
+- [x] ~~Backup na nuvem~~ (Firebase Firestore)
 - [ ] Múltiplas contas/carteiras
-- [ ] Metas de economia
+- [x] ~~Metas de economia~~ (implementado)
 - [ ] Notificações de vencimento
-- [ ] Sincronização entre dispositivos
+- [x] ~~Sincronização entre dispositivos~~ (Firebase)
+- [x] ~~API REST para análise de dados~~ (implementado)
 
 ## 📄 Licença
 
